@@ -1,0 +1,2057 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Тишина</title>
+<style>
+  html,body{margin:0;height:100%;background:#000;color:#bbb;font-family:Georgia,serif;overflow:hidden}
+  canvas{display:block;width:100vw;height:100vh}
+  .screen{position:fixed;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;background:#000;padding:16px;box-sizing:border-box}
+  .screen h1{font-size:56px;letter-spacing:12px;color:#ddd;margin:0 0 24px;font-weight:normal}
+  .screen p{max-width:560px;line-height:1.6;margin:6px 0}
+  .warn{color:#c44;border:1px solid #522;padding:12px 16px;margin:18px 0}
+  button{background:none;border:1px solid #666;color:#ddd;font:inherit;font-size:20px;padding:10px 32px;margin:20px 8px 0;cursor:pointer}
+  button:hover{border-color:#ddd}
+  #hint{position:fixed;left:0;right:0;top:24px;text-align:center;color:#888;font-size:18px;pointer-events:none;transition:opacity 1s}
+  #lvl{position:fixed;right:20px;top:20px;color:#444;font-size:14px;letter-spacing:3px;pointer-events:none}
+  #graph{width:min(800px,92vw);height:220px;margin-top:20px}
+  .hidden{display:none}
+  #select{justify-content:flex-start;overflow-y:auto;padding-top:40px}
+  #grid{display:grid;grid-template-columns:repeat(10,1fr);gap:8px;max-width:640px;width:100%;margin-top:16px}
+  #grid button{margin:0;padding:10px 0;font-size:16px}
+  #grid button:disabled{color:#333;border-color:#1a1a1a;cursor:default}
+  #grid button.next{border-color:#8a2a2a;color:#e66}
+  @media (max-width:520px){ #grid{grid-template-columns:repeat(5,1fr)} }
+  #menu button{display:block;width:min(360px,90vw);margin:10px auto 0}
+  button:disabled{color:#444;border-color:#222;cursor:default}
+  #settings,#achievements{justify-content:flex-start;overflow-y:auto;padding-top:40px}
+  .row{display:flex;align-items:center;justify-content:space-between;gap:16px;width:min(460px,92vw);margin:10px 0;text-align:left}
+  .row input[type=range]{flex:1;accent-color:#a33}
+  .row input[type=checkbox]{width:20px;height:20px;accent-color:#a33}
+  .row span{min-width:48px;text-align:right;color:#888}
+  #achList{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:10px;width:min(700px,94vw);margin-top:16px}
+  .ach{border:1px solid #222;padding:10px;text-align:left;color:#444}
+  .ach b{display:block;margin-bottom:4px}
+  .ach span{font-size:14px}
+  .ach.got{border-color:#6a2222;color:#bbb}
+  .ach.got b{color:#e66}
+  #toast{position:fixed;right:20px;bottom:20px;border:1px solid #6a2222;background:#0c0000;color:#ccc;padding:12px 16px;max-width:300px;opacity:0;transition:opacity .6s;pointer-events:none;z-index:10}
+  #toast b{color:#e66}
+  #calibMeter{width:240px;height:240px;margin-top:10px;border:1px solid #222}
+  #replayBox{display:flex;flex-direction:column;align-items:center}
+  #replayBox.hidden{display:none}
+  #replay{width:min(640px,92vw,64vh);height:auto;aspect-ratio:16/10;border:1px solid #222}
+  #end{justify-content:flex-start;overflow-y:auto;padding-top:32px}
+  #end h1{font-size:40px;margin-bottom:12px}
+  #replayBox button{margin-top:10px}
+  #recList{width:min(460px,92vw)}
+  #touchUI{position:fixed;inset:0;z-index:5;pointer-events:none}
+  #touchUI.hidden{display:none}
+  #touchZone{position:absolute;inset:0;pointer-events:auto;touch-action:none}
+  #stick{position:absolute;width:120px;height:120px;border-radius:50%;border:1px solid #444;pointer-events:none}
+  #stick.hidden{display:none}
+  #knob{position:absolute;left:40px;top:40px;width:40px;height:40px;border-radius:50%;background:rgba(200,200,200,0.25)}
+  .tbtn{position:absolute;pointer-events:auto;touch-action:none;margin:0;padding:0;border-radius:50%;width:64px;height:64px;font-size:14px;background:rgba(0,0,0,0.4)}
+  #tPause{left:16px;top:16px;width:44px;height:44px}
+  #tToy{right:16px;bottom:110px}
+  #tBreath{right:16px;bottom:24px;width:80px;height:80px}
+  body{touch-action:none}
+  .coins{color:#d9b44a;font-size:22px;letter-spacing:2px}
+  #reward button,#shop button{margin-top:12px}
+  #shop{justify-content:flex-start;overflow-y:auto;padding-top:40px}
+  #shopTabs button{font-size:16px;padding:8px 18px;margin:4px}
+  #shopTabs button.on{border-color:#a33;color:#e66}
+  #shopGrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(180px,1fr));gap:12px;width:min(820px,94vw);margin-top:10px}
+  .card{border:1px solid #222;padding:8px;display:flex;flex-direction:column;align-items:center;gap:6px}
+  .card canvas{width:100%;height:auto;aspect-ratio:3/2}
+  .card button{margin:0;font-size:16px;padding:6px 14px;width:100%}
+  .card.legend{border-color:#7a6320;box-shadow:0 0 12px rgba(201,162,39,0.25)}
+  .card.legend b{color:#d9b44a}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,0.85);display:flex;align-items:center;justify-content:center;z-index:20;padding:16px}
+  .overlay.hidden{display:none}
+  .box{border:1px solid #5a2222;background:#070000;padding:24px;max-width:440px;text-align:center}
+  .box h2{font-weight:normal;letter-spacing:4px;color:#ddd;margin-top:0}
+  .small{font-size:14px;color:#777}
+  #dailyStrip{display:flex;gap:6px;justify-content:center;margin:12px 0}
+  #dailyStrip span{border:1px solid #333;padding:6px 8px;color:#555;font-size:14px}
+  #dailyStrip span.past{color:#776a3a;border-color:#3a3220}
+  #dailyStrip span.now{color:#d9b44a;border-color:#d9b44a}
+  #crash{background:rgba(0,0,0,0.35);cursor:wait}
+  .crashbox{background:#fff;color:#202124;font-family:Segoe UI,Arial,sans-serif;width:420px;max-width:92vw;padding:22px 24px;border-radius:8px;text-align:left;box-shadow:0 4px 24px rgba(0,0,0,.5)}
+  .crashbox .ct{font-size:16px;font-weight:600;margin:0 0 10px}
+  .crashbox p{font-size:14px;margin:0 0 18px}
+  .cb{display:flex;justify-content:flex-end;gap:10px}
+  .cb span{font-size:14px;padding:8px 16px;border-radius:4px;border:1px solid #dadce0;color:#1a73e8}
+  .cb span:last-child{background:#1a73e8;color:#fff;border-color:#1a73e8}
+  #notesList{width:min(700px,94vw);text-align:left}
+  #notesList p{border-left:2px solid #6a2222;padding-left:10px;max-width:none}
+  #notesList p.locked{color:#333;border-color:#222}
+</style>
+</head>
+<body>
+<canvas id="c"></canvas>
+<div id="hint"></div>
+<div id="lvl"></div>
+<div id="toast"></div>
+
+<div class="screen" id="start">
+  <h1>ТИШИНА</h1>
+  <p>Ты в темноте. Ты ничего не видишь.</p>
+  <p>Издай звук, и эхо на мгновение покажет комнату.<br>Но <b>оно</b> тоже тебя услышит.</p>
+  <p>Двигайся: WASD / стрелки. Найди выход. 100 лабиринтов. Esc — меню.</p>
+  <p>Бойся тусклых красных пятен на полу.</p>
+  <p class="warn">Внимание: резкие громкие звуки и вспышки (скримеры).<br>Не играйте при проблемах с сердцем или эпилепсии.<br>Лучше всего в наушниках и в темноте.</p>
+  <button id="go">Разрешить микрофон и начать</button>
+  <p id="micErr" class="warn" style="border:none"></p>
+</div>
+
+<div class="screen hidden" id="calib">
+  <h1>МИКРОФОН</h1>
+  <p id="calibText">Сиди тихо. Я слушаю твою комнату…</p>
+  <canvas id="calibMeter" width="300" height="300"></canvas>
+  <button id="calibSkip">Пропустить</button>
+</div>
+<div class="screen hidden" id="menu">
+  <h1>ТИШИНА</h1>
+  <p id="coins" class="coins"></p>
+  <button id="mContinue">Начать</button>
+  <button id="mShop">Магазин</button>
+  <button id="mLevels">Уровни</button>
+  <button id="mAbyss">Бездна</button>
+  <button id="mAch">Достижения</button>
+  <button id="mRecords">Рекорды</button>
+  <button id="mSettings">Настройки</button>
+</div>
+<div class="screen hidden" id="select">
+  <h1>УРОВНИ</h1>
+  <p id="selectInfo"></p>
+  <div id="grid"></div>
+  <button class="back">Назад</button>
+</div>
+<div class="screen hidden" id="settings">
+  <h1>НАСТРОЙКИ</h1>
+  <label class="row">Громкость <input type="range" id="sVolume" min="0" max="1" step="0.05"><span id="sVolumeV"></span></label>
+  <label class="row">Громкость скримеров <input type="range" id="sScare" min="0.2" max="1.5" step="0.05"><span id="sScareV"></span></label>
+  <label class="row">Чувствительность микрофона <input type="range" id="sSens" min="0.3" max="20" step="0.1"><span id="sSensV"></span></label>
+  <label class="row">Вспышки (выключи при светочувствительности) <input type="checkbox" id="sFlashes"></label>
+  <label class="row">Играю в наушниках (в колонках игра не слышит микрофон во время своих громких звуков) <input type="checkbox" id="sHeadphones"></label>
+  <label class="row">Показывать уровень микрофона <input type="checkbox" id="sDebug"></label>
+  <label class="row">Частота скримеров <input type="range" id="sScareFreq" min="0.3" max="1.5" step="0.05"><span id="sScareFreqV"></span></label>
+  <label class="row">Тряска экрана <input type="range" id="sShake" min="0" max="1" step="0.05"><span id="sShakeV"></span></label>
+  <button id="sRecalib">Тест микрофона</button>
+  <button id="sReset">Сбросить прогресс</button>
+  <button class="back">Назад</button>
+</div>
+<div class="screen hidden" id="records">
+  <h1>РЕКОРДЫ</h1>
+  <div id="recList"></div>
+  <p id="recOnline" class="small"></p>
+  <button id="recVK">Таблица ВКонтакте</button>
+  <button class="back">Назад</button>
+</div>
+<div id="touchUI" class="hidden">
+  <div id="touchZone"></div>
+  <div id="stick" class="hidden"><div id="knob"></div></div>
+  <button id="tPause" class="tbtn">II</button>
+  <button id="tToy" class="tbtn">◎</button>
+  <button id="tBreath" class="tbtn">дыхание</button>
+</div>
+<div class="screen hidden" id="pause">
+  <h1>ПАУЗА</h1>
+  <p>Оно тоже ждёт.</p>
+  <button id="pResume">Продолжить</button>
+  <button id="pQuit">Выйти в меню</button>
+</div>
+<div class="screen hidden" id="reward">
+  <h1 id="rewardTitle"></h1>
+  <p id="rewardText" class="coins"></p>
+  <div><button id="rewardAd"></button><button id="rewardNext">Дальше</button></div>
+  <button id="rewardMenu">В меню</button>
+</div>
+<div class="screen hidden" id="shop">
+  <h1>МАГАЗИН</h1>
+  <p id="shopCoins" class="coins"></p>
+  <div id="shopTabs"><button data-cat="face">Скримеры</button><button data-cat="hunter">Охотник</button><button data-cat="statue">Статуя</button><button data-cat="crawler">Ползун</button><button data-cat="repeater">Повторитель</button><button data-cat="player">Ты</button></div>
+  <p id="shopNote"></p>
+  <div id="shopGrid"></div>
+  <div><button id="shopAd"></button><button class="back">Назад</button></div>
+</div>
+<div class="overlay hidden" id="daily">
+  <div class="box">
+    <h2>Ежедневная награда</h2>
+    <p id="dailyText"></p>
+    <div id="dailyStrip"></div>
+    <p class="small">Заходи каждый день: награда растёт. Пропустишь день — счёт начнётся заново.</p>
+    <button id="dailyOk">Забрать</button>
+  </div>
+</div>
+<div class="overlay hidden" id="crash">
+  <div class="crashbox">
+    <p class="ct">Страница не отвечает</p>
+    <p>Можно подождать, пока она ответит, или закрыть её.</p>
+    <div class="cb"><span>Подождать</span><span>Закрыть страницу</span></div>
+  </div>
+</div>
+<div class="overlay hidden" id="ad">
+  <div class="box"><h2>Реклама</h2><p>Здесь будет рекламный ролик площадки.</p><p class="coins" id="adCount"></p></div>
+</div>
+<div class="screen hidden" id="achievements">
+  <h1>ДОСТИЖЕНИЯ</h1>
+  <p id="achInfo"></p>
+  <div id="achList"></div>
+  <h1 style="font-size:32px;margin-top:32px">ЗАПИСКИ</h1>
+  <p id="notesInfo"></p>
+  <div id="notesList"></div>
+  <button class="back">Назад</button>
+</div>
+<div class="screen hidden" id="between"><h1 id="betweenTitle"></h1><p id="betweenText"></p></div>
+
+<div class="screen hidden" id="end">
+  <h1 id="endTitle"></h1>
+  <p id="endText"></p>
+  <div id="replayBox" class="hidden"><canvas id="replay"></canvas><div><button id="clipBtn">Скачать клип</button><button id="replaySkip">Пропустить</button></div></div>
+  <canvas id="graph"></canvas>
+  <div><button id="retry">Заново этот уровень</button><button id="toMenu">В меню</button></div>
+</div>
+
+<script>(()=>{"use strict";let e;var t={};let p="u">typeof window,n=!!(p&&window.AndroidBridge),o=!!(p&&window.webkit?.messageHandlers?.VKWebAppClose),r=!!(p&&window.ReactNativeWebView&&"function"==typeof window.ReactNativeWebView.postMessage),i=p&&!n&&!o,a=i&&/(^\?|&)vk_platform=mobile_web(&|$)/.test(location.search),s=i?"message":"VKWebAppEvent",d=["VKWebAppInit","VKWebAppGetCommunityAuthToken","VKWebAppAddToCommunity","VKWebAppAddToHomeScreenInfo","VKWebAppClose","VKWebAppCopyText","VKWebAppCreateHash","VKWebAppGetUserInfo","VKWebAppSetLocation","VKWebAppSendToClient","VKWebAppGetClientVersion","VKWebAppGetPhoneNumber","VKWebAppGetEmail","VKWebAppGetGroupInfo","VKWebAppGetGeodata","VKWebAppGetCommunityToken","VKWebAppGetConfig","VKWebAppGetLaunchParams","VKWebAppSetTitle","VKWebAppGetAuthToken","VKWebAppCallAPIMethod","VKWebAppJoinGroup","VKWebAppLeaveGroup","VKWebAppAllowMessagesFromGroup","VKWebAppDenyNotifications","VKWebAppAllowNotifications","VKWebAppOpenPayForm","VKWebAppOpenApp","VKWebAppShare","VKWebAppShowWallPostBox","VKWebAppScroll","VKWebAppShowOrderBox","VKWebAppShowLeaderBoardBox","VKWebAppShowInviteBox","VKWebAppShowRequestBox","VKWebAppAddToFavorites","VKWebAppShowStoryBox","VKWebAppStorageGet","VKWebAppStorageGetKeys","VKWebAppStorageSet","VKWebAppFlashGetInfo","VKWebAppSubscribeStoryApp","VKWebAppOpenWallPost","VKWebAppCheckAllowedScopes","VKWebAppCheckBannerAd","VKWebAppHideBannerAd","VKWebAppShowBannerAd","VKWebAppCheckNativeAds","VKWebAppShowNativeAds","VKWebAppRetargetingPixel","VKWebAppConversionHit","VKWebAppShowSubscriptionBox","VKWebAppCheckSurvey","VKWebAppShowSurvey","VKWebAppScrollTop","VKWebAppScrollTopStart","VKWebAppScrollTopStop","VKWebAppShowSlidesSheet","VKWebAppTranslate","VKWebAppRecommend","VKWebAppAddToProfile","VKWebAppGetFriends",...i&&!a?["VKWebAppResizeWindow","VKWebAppAddToMenu","VKWebAppShowInstallPushBox","VKWebAppShowCommunityWidgetPreviewBox","VKWebAppCallStart","VKWebAppCallJoin","VKWebAppCallGetStatus"]:["VKWebAppShowImages"]],A=p?window.AndroidBridge:void 0,b=o?window.webkit.messageHandlers:void 0,l=i?parent:void 0,u=function(t){var p;let a,u,W,V,K=[],c=Math.random().toString(36).substring(2,5);function w(e){K.push(e)}function S(e){return n?!!(A&&"function"==typeof A[e]):o?!!(b?.[e]&&"function"==typeof b[e].postMessage):!!i&&d.includes(e)}function f(){return o||n}function h(){return i&&window.parent!==window}function g(){return f()||h()}function v(e){if(o||n)return[...K].map(t=>t.call(null,e));let t=e?.data;if(!i||!t)return;if(r&&"string"==typeof t)try{t=JSON.parse(t)}catch{}let{type:p,data:s,frameId:d}=t;if(p){if("VKWebAppSettings"===p){a=d;return}[...K].map(e=>e({detail:{type:p,data:s}}))}}r&&/(android)/i.test(navigator.userAgent)?document.addEventListener(s,v):"u">typeof window&&"addEventListener"in window&&window.addEventListener(s,v);let y=(p=function(e,p){A?.[e]?A[e](JSON.stringify(p)):b?.[e]&&"function"==typeof b[e].postMessage?b[e].postMessage?.(p):r?window.ReactNativeWebView.postMessage(JSON.stringify({handler:e,params:p})):l&&"function"==typeof l.postMessage&&l.postMessage({handler:e,params:p,type:"vk-connect",webFrameId:a,connectVersion:t},"*")},u={current:0,next(){return++this.current}},W={},V={add(e,t){let p=null!=t?t:`${u.next()}_${c}`;return W[p]=e,p},resolve(e,t,p){let n=W[e];n&&(p(t)?n.resolve(t):n.reject(t),W[e]=null)}},w(e=>{if(e.detail?.data&&"object"==typeof e.detail.data&&"request_id"in e.detail.data){let{request_id:t,...p}=e.detail.data;t&&V.resolve(t,p,e=>!("error_type"in e))}}),function(e,t={}){return new Promise((n,o)=>{let r=V.add({resolve:n,reject:o},t.request_id);p(e,{...t,request_id:r})})});async function m(t){if(n||o)return S(t);if(e)return e.has(t);try{let t=await y("SetSupportedHandlers");e=new Set(t.supportedHandlers)}catch(t){e=new Set(["VKWebAppInit"])}return e.has(t)}return w(t=>{t.detail&&"SetSupportedHandlers"===t.detail.type&&(e=new Set(t.detail.data.supportedHandlers))}),{send:y,sendPromise:y,subscribe:w,unsubscribe:function(e){let t=K.indexOf(e);t>-1&&K.splice(t,1)},supports:function(e){return console.warn("bridge.supports method is deprecated. Use bridge.supportsAsync instead."),S(e)},supportsAsync:m,isWebView:f,isIframe:h,isEmbedded:g,isStandalone:function(){return!g()}}}("3.0.2");window.vkBridge=window.vkConnect=u;var W=window;for(var V in t)W[V]=t[V];t.__esModule&&Object.defineProperty(W,"__esModule",{value:!0})})();
+//# sourceMappingURL=browser.min.js.map</script>
+<script>
+const cv = document.getElementById('c');
+let g = cv.getContext('2d');   // swapped temporarily to draw shop previews
+const hintEl = document.getElementById('hint');
+let W, H;
+function resize(){ W = cv.width = innerWidth; H = cv.height = innerHeight; }
+addEventListener('resize', resize); resize();
+const rnd=(a,b)=>a+Math.random()*(b-a);
+
+// ---------- level ----------
+// per-level knobs: maze size grows, monsters get faster and more numerous, more traps
+const LEVEL_COUNT = 100;
+const EVENT_POOL=['bang','whisper','door','lights'];
+const LEVELS = Array.from({length:LEVEL_COUNT},(_,n)=>{
+  if(n===0) return {cw:8, ch:6, hunt:1.9, monsters:1, traps:2, wake:40, events:['intro']};
+  const R=mulberry(n*7919+1), pool=EVENT_POOL;
+  const events=pool.filter(()=>R()<0.25+n*0.004);
+  if(!events.length) events.push(pool[n%pool.length]);
+  return withTrial(n+1, {
+    cw: Math.min(24, 8+Math.floor(n*0.17)),
+    ch: Math.min(15, 6+Math.floor(n*0.1)),
+    hunt: Math.min(2.75, 1.95+n*0.009),        // player walks 2.6, so late levels can't be outrun
+    monsters: Math.min(4, 1+Math.floor(n/22)),
+    traps: Math.min(22, 2+Math.floor(n/5)),
+    wake: Math.max(4, 14-Math.floor(n/8)),
+    events,
+  });
+});
+// every 10th level is a trial: an extra monster, more traps, faster hunting, and it pays triple
+function withTrial(num, c){
+  if(num%10!==0) return c;
+  return Object.assign(c, {
+    trial:true, monsters:c.monsters+1, traps:Math.ceil(c.traps*1.6)+2,
+    hunt:Math.min(3.0,c.hunt+0.15), wake:Math.min(c.wake,5), events:EVENT_POOL.slice(),
+  });
+}
+function levelReward(num, trial, first){
+  let c=10+Math.floor(num/4);
+  if(trial) c*=3;
+  return first ? c : Math.ceil(c*0.25);       // replays pay a quarter, so farming level 1 doesn't work
+}
+
+// ---------- chapters ----------
+// every 10 levels is a chapter with its own room acoustics; its 10th level (the trial) carries a task
+const ROOMS={
+  studio:  {wall:[150,170,190], echo:1.0, hear:1.0, drone:41, name:'студия'},
+  basement:{wall:[150,120,95],  echo:0.6, hear:0.8, drone:33, name:'подвал: эхо короткое'},
+  metal:   {wall:[120,175,185], echo:1.5, hear:1.6, drone:55, name:'металл: эхо далеко, и тебя слышно далеко'},
+  water:   {wall:[90,150,150],  echo:1.0, hear:1.0, drone:38, water:true, name:'вода: каждый шаг плещет'},
+};
+const CHAPTERS=[
+  {name:'Студия',            room:'studio',   task:'power'},
+  {name:'Подвал',            room:'basement', task:'whisper'},
+  {name:'Трубы',             room:'metal',    task:'once'},
+  {name:'Затопленный этаж',  room:'water',    task:'power'},
+  {name:'Архив плёнок',      room:'studio',   task:'whisper'},
+  {name:'Котельная',         room:'metal',    task:'once'},
+  {name:'Колодец',           room:'basement', task:'power'},
+  {name:'Коллектор',         room:'water',    task:'whisper'},
+  {name:'Аппаратная',        room:'metal',    task:'once'},
+  {name:'Тишина',            room:'studio',   task:'whisper'},
+];
+const TASK_TEXT={
+  power:'Нет питания. Найди 3 предохранителя, чтобы открыть выход.',
+  whisper:'Выход скрыт. Найди источник шёпота — иди на звук.',
+  once:'Здесь можно шуметь только один раз.',
+};
+function chapterFor(num, abyssDepth){
+  if(abyssDepth){ const R=mulberry(abyssDepth*131); return CHAPTERS[R()*CHAPTERS.length|0]; }
+  return CHAPTERS[Math.min(CHAPTERS.length-1,Math.floor((num-1)/10))];
+}
+// monster kinds unlock one chapter at a time, so each is learned alone first
+const KIND_FROM={hunter:1, statue:11, crawler:21, repeater:31};
+const KIND_NAME={hunter:'Охотник', statue:'Статуя', crawler:'Ползун', repeater:'Повторитель'};
+const KIND_HINT={
+  statue:'Статуя двигается, только пока ты шумишь. Свет эха её останавливает.',
+  crawler:'Ползун не слышит голос. Он слышит шаги. Замри.',
+  repeater:'Повторитель подражает звукам. Не всё, что капает, — вода.',
+};
+function kindsFor(num, abyssDepth){
+  const open=Object.keys(KIND_FROM).filter(k=>abyssDepth || num>=KIND_FROM[k]);
+  return open;
+}
+const PHRASES=['Найди выход.','Не торопись.','Ты слышишь себя?','Оно ближе, чем кажется.','Тише.',
+  'Их стало больше.','Не шепчи.','Почти.','Не оборачивайся.','Дыши через нос.','Оно помнит твой голос.',
+  'Здесь кто-то был.','Не наступай на пятна.','Считай шаги.','Свет не поможет.','Оно уже здесь.',
+  'Ты один?','Кто дышит рядом?','Не смейся.','Слушай.'];
+// the story: one note on levels 2, 6, 10 … 98, found by stepping on it
+const NOTES=[
+  'Меня зовут Илья. Я звукорежиссёр. Если ты это читаешь — ты тоже здесь.',
+  'Студия называлась «Тишина». Самая тихая комната в городе. Мы записывали ничего.',
+  'На записях пустой комнаты было дыхание. Не моё. Я проверил трижды.',
+  'Вера, моя ассистентка, сказала: «Оно дышит в такт с тобой». Я посмеялся.',
+  'Через неделю коридоры стали длиннее. Я считал шаги. Каждый день — больше.',
+  'Не верь зелёному свету. Иногда это не выход. Иногда это приманка.',
+  'Вера пропала в четверг. В микрофоне остался её шёпот: «не шуми».',
+  'Оно не видит. Оно слушает. Чем громче ты, тем ближе оно.',
+  'Я нашёл её туфлю у стены. Стена была тёплой.',
+  'Иногда оно идёт на тишину. Не знаю, как оно выбирает. Может, проверяет нас.',
+  'Я больше не уверен, что стены настоящие. Эхо врёт.',
+  'Оно было человеком. Я слышал, как оно пытается говорить. Выходит только крик.',
+  'Здесь кто-то был до нас. На стенах царапины — счёт до ста.',
+  'Сто комнат. Сто. Кто-то построил это нарочно.',
+  'Я записал оно на плёнку. Если замедлить в десять раз — это смех.',
+  'Вера жива. Я слышу её шаги. Но когда я зову — шаги становятся быстрее.',
+  'Каждый крик, который ты сдержал, остаётся здесь. Оно сделано из них.',
+  'Не смотри назад, когда загорается свет. Просто не смотри.',
+  'Я перестал есть. Еда шумит.',
+  'Это не Вера. Это то, что научилось ходить, как она.',
+  'Если выход перевернул комнату — иди. Не останавливайся. Оно ждёт, что ты замрёшь.',
+  'Я понял, зачем мы здесь. Оно хочет услышать, как звучит последний человек.',
+  'Мой голос садится. Скоро я тоже буду только дыханием в записи.',
+  'После сотой комнаты нет выхода. Есть только низ. Я иду туда.',
+  'Если ты нашёл это — ты слушал всё время. Значит, оно слушало тебя. Тише.',
+];
+const noteFor=num=>num>=2 && num<=98 && (num-2)%4===0 ? (num-2)/4 : -1;
+
+const SAVE_KEY='silence.unlocked';
+function loadUnlocked(){ try{ return Math.max(1,Math.min(LEVEL_COUNT,parseInt(localStorage.getItem(SAVE_KEY))||1)); }catch(e){ return 1; } }
+function saveUnlocked(n){ try{ if(n>loadUnlocked()) localStorage.setItem(SAVE_KEY,String(Math.min(LEVEL_COUNT,n))); }catch(e){} }
+
+// endless mode after level 100 (levels 101, 102, …): every maze is new, and the echo fades the deeper you go
+function abyssCfg(d){
+  return withTrial(LEVEL_COUNT+d, {
+    cw:18+(Math.random()*8|0), ch:11+(Math.random()*5|0),
+    hunt:Math.min(2.95,2.6+d*0.01), monsters:Math.min(6,3+Math.floor(d/10)),
+    traps:15+(Math.random()*15|0), wake:4,
+    events:EVENT_POOL.filter(()=>Math.random()<0.5),
+    echo:Math.max(0.45,1-d*0.02),
+  });
+}
+
+// ---------- save data ----------
+const store={
+  get(k,d){ try{ const v=localStorage.getItem('silence.'+k); return v==null?d:JSON.parse(v); }catch(e){ return d; } },
+  set(k,v){ try{ localStorage.setItem('silence.'+k,JSON.stringify(v)); }catch(e){} },
+};
+const settings=Object.assign({volume:0.9,scare:1,sens:3,flashes:true,debug:true,output:'speakers',scareFreq:1,shake:1},store.get('settings',{}));
+const stats=Object.assign({deaths:0,faces:[],abyss:false,abyssBest:0,coins:0,owned:[],
+  skin:{},daily:{last:'',streak:0},adAt:0,
+  calm:0, lastTwist:'', bodies:{}, notes:[], prof:{levels:0,early:0,L:0,R:0,U:0,D:0}},store.get('stats',{}));
+const saveStats=()=>store.set('stats',stats);
+// one skin slot per monster kind; old saves had a single "monster" slot, which was the hunter
+stats.skin=Object.assign({hunter:stats.skin.monster||'m_shadow',statue:'st_stone',crawler:'cr_bones',repeater:'rp_drip',player:'p_dot'},stats.skin);
+delete stats.skin.monster;
+stats.records=Object.assign({quietest:null,fastest:null,levels:0},stats.records||{});
+
+// ---------- shop ----------
+// prices are tuned so a full run of levels 1-100 earns ~2700 coins: commons in a few sessions,
+// rares after most of the campaign, legendaries only after weeks of daily bonuses and the abyss
+const FACE_NAMES=['Бледное лицо','Глаза','Пасть','Девочка','Многоногий','Руки','Череп','Перевёрнутый',
+  'Помехи','Пауки','«Я тебя слышу»','Кукла','Тень в двери','Зашитый рот','Лицо из шума','За спиной',
+  'Щупальца','Улыбка','Толпа','Расплавленный'];
+const FREE_FACES=8;
+const SHOP=[
+  ...FACE_NAMES.slice(FREE_FACES).map((name,i)=>({id:'f'+(i+FREE_FACES),cat:'face',face:i+FREE_FACES,name,price:[250,300,350,400,500,600,700,800,1000,1200,1500,2000][i]})),
+  {id:'m_shadow', cat:'hunter', name:'Тень',            price:0},
+  {id:'m_ghost',  cat:'hunter', name:'Призрак',         price:400},
+  {id:'m_mask',   cat:'hunter', name:'Безликий',        price:700},
+  {id:'m_spider', cat:'hunter', name:'Паук',            price:1100},
+  {id:'m_eye',    cat:'hunter', name:'Глаз',            price:1800},
+  {id:'m_doll',   cat:'hunter', name:'Кукла',           price:3000},
+  {id:'m_maw',    cat:'hunter', name:'Пасть',           price:5000},
+  {id:'m_king',   cat:'hunter', name:'Король тишины',   price:15000, legendary:true},
+  {id:'st_stone',     cat:'statue',  name:'Камень',          price:0},
+  {id:'st_mannequin', cat:'statue',  name:'Манекен',         price:600},
+  {id:'st_gargoyle',  cat:'statue',  name:'Горгулья',        price:1600},
+  {id:'st_angel',     cat:'statue',  name:'Плачущий ангел',  price:13000, legendary:true},
+  {id:'cr_bones',     cat:'crawler', name:'Кости',           price:0},
+  {id:'cr_centipede', cat:'crawler', name:'Многоножка',      price:800},
+  {id:'cr_hand',      cat:'crawler', name:'Рука',            price:1900},
+  {id:'rp_drip',      cat:'repeater',name:'Капля',           price:0},
+  {id:'rp_radio',     cat:'repeater',name:'Радио',           price:900},
+  {id:'rp_mouths',    cat:'repeater',name:'Рты',             price:2200},
+  {id:'p_dot',    cat:'player', name:'Точка',           price:0},
+  {id:'p_candle', cat:'player', name:'Свеча',           price:300},
+  {id:'p_firefly',cat:'player', name:'Светлячок',       price:600},
+  {id:'p_cat',    cat:'player', name:'Кот',             price:1000},
+  {id:'p_skull',  cat:'player', name:'Череп',           price:2000},
+  {id:'p_lantern',cat:'player', name:'Фонарь',          price:3500},
+  {id:'p_prism',  cat:'player', name:'Призма',          price:12000, legendary:true},
+];
+const owns=id=>{ const it=SHOP.find(s=>s.id===id); return !it || it.price===0 || stats.owned.includes(id); };
+const ownedFaces=()=>FACES.map((_,i)=>i).filter(i=>i<FREE_FACES || stats.owned.includes('f'+i));
+function addCoins(n){ stats.coins+=n; saveStats(); }
+
+// ---------- platforms ----------
+// One game, several homes. Each build adds its platform's script and the game uses whichever is present:
+// Yandex Games (window.YaGames), VK (window.vkBridge), the Android/RuStore wrapper (window.SilenceNative).
+// In a plain browser there are no ads, except a 5-second stand-in on localhost/file so the flow can be tested.
+const platform = window.YaGames ? 'yandex' : window.vkBridge ? 'vk' : window.SilenceNative ? 'android' : 'web';
+let ysdk=null, lb=null;
+if(platform==='yandex') YaGames.init().then(s=>{
+  ysdk=s;
+  try{ s.features.LoadingAPI.ready(); }catch(e){}
+  s.getLeaderboards().then(l=>{ lb=l; }).catch(()=>{});
+}).catch(()=>{});
+if(platform==='vk') vkBridge.send('VKWebAppInit').catch(()=>{});
+
+// outside VK (or if VK never answers) bridge calls hang forever, so every call has a deadline
+const vkSend=(method,params,ms)=>Promise.race([vkBridge.send(method,params),
+  new Promise((_,rej)=>setTimeout(()=>rej(new Error('vk timeout')),ms))]);
+async function vkAd(format){
+  try{
+    const c=await vkSend('VKWebAppCheckNativeAds',{ad_format:format},5000);
+    if(!c.result) return false;
+    Ads.mute(true);
+    const r=await vkSend('VKWebAppShowNativeAds',{ad_format:format},90000);
+    return !!r.result;
+  }catch(e){ return false; }
+  finally{ Ads.mute(false); }
+}
+// the Android wrapper answers through window.onNativeAd(id, ok)
+const nativeWaits={}; let nativeSeq=0;
+window.onNativeAd=(id,ok)=>{ const r=nativeWaits[id]; delete nativeWaits[id]; if(r) r(!!ok); };
+function nativeAd(kind){
+  Ads.mute(true);
+  return new Promise(res=>{ const id=++nativeSeq; nativeWaits[id]=res; SilenceNative.showAd(kind,id); })
+    .then(ok=>{ Ads.mute(false); return ok; });
+}
+
+const devAds=['localhost','127.0.0.1',''].includes(location.hostname);
+// Ads only ever run between runs: both calls refuse while a level is running or paused.
+const Ads={
+  available:()=>platform==='android' ? SilenceNative.adsReady() : platform!=='web' || devAds,
+  mute(on){ if(ac){ on ? ac.suspend() : ac.resume(); } },
+  rewarded(){
+    if(running || paused) return Promise.resolve(false);
+    if(platform==='yandex'){
+      if(!ysdk) return Promise.resolve(false);
+      return new Promise(res=>{ let got=false;
+        ysdk.adv.showRewardedVideo({callbacks:{
+          onOpen:()=>Ads.mute(true), onRewarded:()=>{ got=true; },
+          onClose:()=>{ Ads.mute(false); res(got); }, onError:()=>{ Ads.mute(false); res(false); } }});
+      });
+    }
+    if(platform==='vk') return vkAd('reward');
+    if(platform==='android') return nativeAd('reward');
+    if(!devAds) return Promise.resolve(false);
+    return new Promise(res=>{
+      const box=document.getElementById('ad'), cnt=document.getElementById('adCount');
+      let left=5; cnt.textContent=left; box.classList.remove('hidden'); Ads.mute(true);
+      const iv=setInterval(()=>{ left--; cnt.textContent=left;
+        if(left<=0){ clearInterval(iv); box.classList.add('hidden'); Ads.mute(false); res(true); } },1000);
+    });
+  },
+  interstitial(){
+    if(running || paused) return Promise.resolve();
+    if(platform==='yandex' && ysdk) return new Promise(res=>ysdk.adv.showFullscreenAdv({callbacks:{
+      onOpen:()=>Ads.mute(true), onClose:()=>{ Ads.mute(false); res(); }, onError:()=>{ Ads.mute(false); res(); } }}));
+    if(platform==='vk') return vkAd('interstitial');
+    if(platform==='android') return nativeAd('interstitial');
+    return Promise.resolve();
+  },
+};
+let betweenRuns=0;   // every 3rd break between runs may show a fullscreen ad
+async function maybeInterstitial(){ if(++betweenRuns%3===0) await Ads.interstitial(); }
+function submitScore(){
+  if(!lb) return;
+  lb.setLeaderboardScore('abyss',stats.abyssBest).catch(()=>{});
+  lb.setLeaderboardScore('campaign',loadUnlocked()).catch(()=>{});
+}
+
+const DAILY=[50,75,100,150,200,300,500];
+function dayStr(d){ return d.toLocaleDateString('sv'); }
+function checkDaily(){
+  const today=dayStr(new Date()); if(stats.daily.last===today) return;
+  const y=new Date(); y.setDate(y.getDate()-1);
+  stats.daily.streak = stats.daily.last===dayStr(y) ? stats.daily.streak+1 : 1;
+  stats.daily.last=today;
+  const day=(stats.daily.streak-1)%7, coins=DAILY[day];
+  addCoins(coins);
+  if(stats.daily.streak>=7) ach('week');
+  document.getElementById('dailyText').textContent=`День ${day+1} из 7 · +${coins} монет`;
+  document.getElementById('dailyStrip').innerHTML=DAILY.map((c,i)=>`<span class="${i<day?'past':i===day?'now':''}">${c}</span>`).join('');
+  document.getElementById('daily').classList.remove('hidden');
+}
+
+const ACH=[
+  {id:'first_sound', title:'Первый звук',      desc:'Издай звук в темноте'},
+  {id:'eyes',        title:'Глаза во тьме',    desc:'Увидь монстра в эхе'},
+  {id:'trap',        title:'Не туда',          desc:'Наступи на ловушку'},
+  {id:'heard',       title:'Услышан',          desc:'Погибни в первый раз'},
+  {id:'chain',       title:'Не сдержался',     desc:'Вскрикни сразу после скримера'},
+  {id:'lvl1',        title:'Выход есть',       desc:'Пройди первый лабиринт'},
+  {id:'lvl10',       title:'Привыкаешь',       desc:'Пройди 10 уровней'},
+  {id:'lvl25',       title:'Четверть пути',    desc:'Пройди 25 уровней'},
+  {id:'lvl50',       title:'Половина',         desc:'Пройди 50 уровней'},
+  {id:'lvl100',      title:'Тишина',           desc:'Пройди все 100 уровней'},
+  {id:'mute',        title:'Немой',            desc:'Пройди уровень, издав не больше 3 звуков'},
+  {id:'careful',     title:'Осторожный',       desc:'Пройди уровень с 5+ ловушками, не задев ни одной'},
+  {id:'runner',      title:'Бегун',            desc:'Пройди уровень 5+ быстрее 30 секунд'},
+  {id:'lights',      title:'Не оборачивайся',  desc:'Переживи вспышку света'},
+  {id:'collector',   title:'Коллекционер',     desc:'Увидь все 20 скримеров'},
+  {id:'stubborn',    title:'Упрямый',          desc:'Погибни 50 раз'},
+  {id:'abyss',       title:'Бездна',           desc:'Спустись в Бездну'},
+  {id:'abyss10',     title:'Глубже',           desc:'Пройди Бездну 10'},
+  {id:'abyss25',     title:'Дна нет',          desc:'Пройди Бездну 25'},
+  {id:'trial',       title:'Испытание',        desc:'Пройди уровень-испытание (каждый 10-й)'},
+  {id:'buy',         title:'Покупатель',       desc:'Купи что-нибудь в магазине'},
+  {id:'legend',      title:'Легенда',          desc:'Купи легендарный предмет'},
+  {id:'week',        title:'Каждый день',      desc:'Заходи 7 дней подряд'},
+  {id:'fooled',      title:'Не верь свету',    desc:'Шагни в ложный выход'},
+  {id:'loop',        title:'Ты уже был здесь', desc:'Попади в перевёрнутую комнату'},
+  {id:'night',       title:'Один дома',        desc:'Играй глубокой ночью'},
+  {id:'reader',      title:'Вся история',      desc:'Найди все 25 записок'},
+  {id:'thrower',     title:'Отвлекающий манёвр', desc:'Брось камень'},
+  {id:'toy',         title:'Заводная',         desc:'Заведи игрушку'},
+  {id:'breath',      title:'Не дыши',          desc:'Задержи дыхание дольше 4 секунд'},
+  {id:'power',       title:'Да будет свет',    desc:'Восстанови питание'},
+  {id:'source',      title:'Источник',         desc:'Найди источник шёпота'},
+];
+let achGot=store.get('ach',[]);
+function ach(id){
+  if(achGot.includes(id)) return;
+  achGot.push(id); store.set('ach',achGot);
+  const a=ACH.find(a=>a.id===id); if(!a) return;
+  const el=document.getElementById('toast');
+  el.innerHTML=`<b>Достижение: ${a.title}</b><br>${a.desc}`; el.style.opacity=1;
+  clearTimeout(ach.t); ach.t=setTimeout(()=>el.style.opacity=0,3500);
+}
+let level=0, abyss=0, cfg, MW, MH, map, lit, exit, traps, monsters;
+let levelPulses=0, levelTraps=0;
+const player={x:1.5,y:1.5};
+const solid=(x,y)=>x<0||y<0||x>=MW||y>=MH||map[y][x]===1;
+
+function buildLevel(L){
+  const CW=L.cw, CH=L.ch;
+  MW=CW*2+1; MH=CH*2+1;
+  map=[]; for(let y=0;y<MH;y++) map.push(new Array(MW).fill(1));
+  const st=[[0,0]], seen=new Set(['0,0']); map[1][1]=0;
+  while(st.length){
+    const [cx,cy]=st[st.length-1];
+    const nb=[[1,0],[-1,0],[0,1],[0,-1]].map(([dx,dy])=>[cx+dx,cy+dy])
+      .filter(([x,y])=>x>=0&&y>=0&&x<CW&&y<CH&&!seen.has(x+','+y));
+    if(!nb.length){st.pop();continue;}
+    const [nx,ny]=nb[Math.random()*nb.length|0];
+    map[cy*2+1+(ny-cy)][cx*2+1+(nx-cx)]=0; map[ny*2+1][nx*2+1]=0;
+    seen.add(nx+','+ny); st.push([nx,ny]);
+  }
+  // a few loops so the monster can't be dodged only one way
+  for(let i=0;i<CW*CH/4;i++){
+    const x=1+(Math.random()*(MW-2)|0), y=1+(Math.random()*(MH-2)|0);
+    if(map[y][x]===1 && ((map[y][x-1]===0&&map[y][x+1]===0)||(map[y-1][x]===0&&map[y+1][x]===0))) map[y][x]=0;
+  }
+  lit=map.map(r=>r.map(()=>0));
+  // exit in a random far corner
+  exit=[{x:MW-2,y:MH-2},{x:MW-2,y:1},{x:1,y:MH-2}][Math.random()*3|0];
+  player.x=1.5; player.y=1.5;
+  // traps sit on the shortest route more often than not, so they can't simply be ignored
+  const route=bfs(1,1,exit.x,exit.y)||[];
+  traps=[];
+  for(let i=0;i<L.traps;i++){
+    let p;
+    if(Math.random()<0.6 && route.length>8){ const r=route[4+(Math.random()*(route.length-6)|0)]; p={x:r[0],y:r[1]}; }
+    else p=randomOpen();
+    if(p.x+p.y<4 || traps.some(q=>q.x===p.x&&q.y===p.y)) continue;
+    traps.push({x:p.x,y:p.y,kind:['bell','glass','scream','radio','crow'][Math.random()*5|0],used:false});
+  }
+  const num=levelNum(), kinds=kindsFor(num,abyss);
+  const fresh=Object.keys(KIND_FROM).find(k=>!abyss && KIND_FROM[k]===num && k!=='hunter');   // a kind's debut level: only it
+  monsters=[];
+  for(let i=0;i<L.monsters;i++){
+    let p; do{ p=randomOpen(); } while(Math.hypot(p.x-1,p.y-1)<MW*0.45);
+    const kind = fresh || (i===0 ? 'hunter' : kinds[Math.random()*kinds.length|0]);
+    monsters.push({kind,x:p.x+0.5,y:p.y+0.5,path:[],target:null,hunting:false,repath:0,seen:0,step:0,beat:0,lastLoud:0,whisper:rnd(15,30)});
+  }
+  L.fresh=fresh;
+
+  // tools and landmarks
+  items={stones:2, toy:(L.trial||Math.random()<0.35)?1:0};
+  projectiles=[]; toys=[];
+  landmarks=[];
+  for(let i=0;i<2+(Math.random()*2|0);i++){
+    const p=randomOpen(); landmarks.push({x:p.x,y:p.y,kind:['drip','hum','creak'][i%3],t:rnd(0,2)});
+  }
+  task=null;
+  if(L.trial){
+    const kind=chapterFor(num,abyss).task, far=()=>{ let p; do{ p=randomOpen(); } while(Math.hypot(p.x-1,p.y-1)<6); return p; };
+    if(kind==='power') task={kind, fuses:[far(),far(),far()].map(p=>({x:p.x,y:p.y,got:false})), done:false};
+    if(kind==='whisper'){ const p=far(); task={kind, src:{x:p.x,y:p.y}, t:0, done:false}; }
+    if(kind==='once') task={kind, used:0, done:true};
+  }
+}
+let items={stones:0,toy:0}, projectiles=[], toys=[], landmarks=[], task=null;
+const exitOpen=()=>!task || task.done;
+
+function bfs(sx,sy,tx,ty){
+  sx|=0;sy|=0;tx|=0;ty|=0;
+  const prev=new Map(), q=[[sx,sy]], k=(x,y)=>y*MW+x; prev.set(k(sx,sy),null);
+  for(let qi=0; qi<q.length; qi++){
+    const [x,y]=q[qi];
+    if(x===tx&&y===ty){ const p=[]; let c=k(x,y); while(c!=null){p.push([c%MW,c/MW|0]); c=prev.get(c);} return p.reverse(); }
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const nx=x+dx, ny=y+dy;
+      if(!solid(nx,ny)&&!prev.has(k(nx,ny))){prev.set(k(nx,ny),k(x,y)); q.push([nx,ny]);}
+    }
+  }
+  return null;
+}
+function randomOpen(){ for(;;){ const x=1+(Math.random()*(MW-2)|0), y=1+(Math.random()*(MH-2)|0); if(!solid(x,y)) return {x,y}; } }
+function openAtDistance(min,max,accept){
+  for(let i=0;i<400;i++){
+    const p=randomOpen(), path=bfs(1,1,p.x,p.y);
+    if(path && path.length>=min && path.length<=max && (!accept||accept(p))) return p;
+  }
+  return null;
+}
+function nearestOpen(x,y){
+  for(let r=0;r<6;r++) for(let dy=-r;dy<=r;dy++) for(let dx=-r;dx<=r;dx++) if(!solid(x+dx,y+dy)) return {x:x+dx,y:y+dy};
+  return null;
+}
+const bodyKey=()=>abyss ? 'abyss' : String(level+1);
+
+// Breaks the rules the player has learned. Returns text for the level intro, or ''.
+const TWISTS=['fakeExit','loopExit','lyingEcho','silenceHunter','empty'];
+function applyTwists(){
+  tw={}; lie=null; flipView=false; silentFor=0; levelScares=0;
+  const num=levelNum(); let say='';
+
+  const ni=noteFor(num);
+  if(ni>=0){ const p=openAtDistance(6,30); if(p) tw.note={x:p.x,y:p.y,i:ni}; }
+
+  // your last death on this level is still lying there
+  const b=stats.bodies[bodyKey()];
+  if(b){ const p=nearestOpen(b[0],b[1]); if(p) tw.body=p; }
+
+  if(num>3 && !cfg.trial && Math.random()<0.4){
+    const pool=TWISTS.filter(x=>x!==stats.lastTwist), k=pool[Math.random()*pool.length|0];
+    tw.kind=k; stats.lastTwist=k; saveStats();
+    if(k==='fakeExit'){
+      const c=[{x:MW-2,y:MH-2},{x:MW-2,y:1},{x:1,y:MH-2}].filter(p=>p.x!==exit.x||p.y!==exit.y)[Math.random()*2|0];
+      tw.fake=c;
+    }
+    if(k==='loopExit') tw.loop=true;
+    if(k==='lyingEcho') lie=map.map((r,y)=>r.map((v,x)=>x>0&&y>0&&x<MW-1&&y<MH-1&&Math.random()<0.12));
+    if(k==='empty'){
+      // no monster at all: only something invisible that walks and breathes, and never touches you
+      for(const m of monsters) m.ghost=true;
+      monsters.length=Math.min(monsters.length,1);
+    }
+  }
+
+  // tension builds when nothing has happened for a while; then it lands for sure
+  if(stats.calm>=2 && tw.kind!=='empty') tw.bigAt=rnd(18,40);
+
+  // the game learns your habits
+  const P=stats.prof;
+  if(P.levels>=5){
+    if(P.early/P.levels>0.6){
+      const route=bfs(1,1,exit.x,exit.y)||[];
+      if(route.length>6){ const r=route[2+(Math.random()*2|0)]; traps.push({x:r[0],y:r[1],kind:'scream',used:false}); }
+    }
+    const dirs={L:P.L,R:P.R,U:P.U,D:P.D}, tot=P.L+P.R+P.U+P.D;
+    const fav=Object.keys(dirs).reduce((a,b)=>dirs[a]>dirs[b]?a:b);
+    if(tot>0 && dirs[fav]/tot>0.4 && monsters.length && !monsters[0].ghost && Math.random()<0.5){
+      const p=openAtDistance(8,16,q=> fav==='R'?q.x>q.y : fav==='D'?q.y>q.x : true);
+      if(p){ const m=monsters[0]; m.x=p.x+0.5; m.y=p.y+0.5; m.ambush=true;
+        if(Math.random()<0.4) say={R:'Ты всегда идёшь направо.',D:'Ты всегда идёшь вниз.',L:'Ты всегда идёшь налево.',U:'Ты всегда идёшь наверх.'}[fav]; }
+    }
+  }
+
+  // late at night it gets quieter and meaner
+  const now=new Date(), h=now.getHours();
+  tw.night = h>=23 || h<5;
+  if(tw.night){
+    cfg=Object.assign({},cfg,{hunt:cfg.hunt+0.1});
+    ach('night');
+    if(!nightShown){ nightShown=true; say=`Уже ${h}:${String(now.getMinutes()).padStart(2,'0')}. Ты один дома?`; }
+  }
+  if(master) master.gain.value=settings.volume*(tw.night?0.7:1);
+
+  if(num>10 && !cfg.trial && Math.random()<0.06) tw.crashAt=rnd(25,55);
+  return say;
+}
+function endProfile(){
+  stats.prof.levels++; if(tw.earlyNoise) stats.prof.early++;
+  saveStats();
+}
+
+// ---------- state ----------
+let pulses=[], keys={}, t=0, lt=0, last=0, running=false, dead=false;
+let floor=0.01, loud=0, lastRms=0, sens=settings.sens, lastPulse=0;
+function setSens(v){ sens=settings.sens=Math.max(0.3,Math.min(20,v)); store.set('settings',settings); }
+let history=[], marks=[];
+let fearUntil=0;          // a scare just happened: a scream now brings the monster
+let flash=0, faceUntil=0, faceKind=0, faceStart=0, lastFace=-1, darkUntil=0;
+let ev={};
+// per-level surprises (see applyTwists); lie flips what the echo shows, flipView turns the world upside down
+let tw={}, lie=null, flipView=false, silentFor=0, levelScares=0, nightShown=false;
+// On speakers the game's own loud sounds reach the mic. While deafUntil (game time) is ahead,
+// the mic is ignored entirely: no echo, no monster alert, no scream stats, and it isn't "silence" either.
+let deafUntil=0;
+function guard(sec){ deafUntil=Math.max(deafUntil,t+sec+0.4); }
+const isDeaf=()=>settings.output==='speakers' && t<deafUntil;
+
+addEventListener('keydown',e=>{
+  keys[e.code]=true;
+  if(e.key==='+'||e.key==='='){ setSens(sens*1.4); hint('Чувствительность: '+sens.toFixed(1),1.5); }
+  if(e.key==='-'){ setSens(sens/1.4); hint('Чувствительность: '+sens.toFixed(1),1.5); }
+  if(e.code==='Escape'){ if(running) pauseGame(); else if(paused) resumeGame(); }
+});
+addEventListener('keyup',e=>keys[e.code]=false);
+
+function hint(s,dur=4){ hintEl.textContent=s; hintEl.style.opacity=1; clearTimeout(hint.t); hint.t=setTimeout(()=>hintEl.style.opacity=0,dur*1000); }
+
+// ---------- audio ----------
+let ac, analyser, micBuf, stream, master, heartGain, droneGain, droneOsc=[];
+async function initAudio(){
+  stream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false,noiseSuppression:false,autoGainControl:true}});
+  ac = new AudioContext();
+  await ac.resume();
+  const src = ac.createMediaStreamSource(stream);
+  analyser = ac.createAnalyser(); analyser.fftSize=1024; src.connect(analyser);
+  // Chrome may not process a graph branch that never reaches the destination
+  const sink = ac.createGain(); sink.gain.value=0; analyser.connect(sink).connect(ac.destination);
+  micBuf = new Float32Array(analyser.fftSize);
+  master = ac.createGain(); master.gain.value=settings.volume; master.connect(ac.destination);
+  // the room's hum; it pitches per room and drops away near an armed trap (a fair warning)
+  droneGain=ac.createGain(); droneGain.gain.value=1; droneGain.connect(master);
+  droneOsc=[41,43.5].map(f=>{
+    const o=ac.createOscillator(), gn=ac.createGain(); o.type='sawtooth'; o.frequency.value=f;
+    const lp=ac.createBiquadFilter(); lp.type='lowpass'; lp.frequency.value=120;
+    gn.gain.value=0.05; o.connect(lp).connect(gn).connect(droneGain); o.start(); return o;
+  });
+  heartGain = ac.createGain(); heartGain.gain.value=1; heartGain.connect(master);
+}
+function micRms(){
+  analyser.getFloatTimeDomainData(micBuf);
+  let s=0; for(const v of micBuf) s+=v*v; return Math.sqrt(s/micBuf.length);
+}
+const now=()=>ac.currentTime;
+function noiseBuf(sec){
+  const b=ac.createBuffer(1,ac.sampleRate*sec,ac.sampleRate), d=b.getChannelData(0);
+  for(let i=0;i<d.length;i++) d[i]=Math.random()*2-1; return b;
+}
+function out(pan=0){ const p=ac.createStereoPanner(); p.pan.value=Math.max(-1,Math.min(1,pan)); p.connect(master); return p; }
+function env(node,vol,sec,dst){ const gn=ac.createGain(); gn.gain.setValueAtTime(vol,now()); gn.gain.exponentialRampToValueAtTime(0.001,now()+sec); node.connect(gn).connect(dst); return gn; }
+function osc(type,f,f2,sec,vol,dst,delay=0){
+  const o=ac.createOscillator(); o.type=type;
+  o.frequency.setValueAtTime(f,now()+delay); o.frequency.exponentialRampToValueAtTime(f2,now()+delay+sec);
+  const gn=ac.createGain(); gn.gain.setValueAtTime(0,now()); gn.gain.setValueAtTime(vol,now()+delay); gn.gain.exponentialRampToValueAtTime(0.001,now()+delay+sec);
+  o.connect(gn).connect(dst); o.start(now()+delay); o.stop(now()+delay+sec+0.05);
+}
+function noise(sec,vol,dst,type='bandpass',freq=2500,q=0.7,delay=0){
+  const n=ac.createBufferSource(); n.buffer=noiseBuf(sec);
+  const f=ac.createBiquadFilter(); f.type=type; f.frequency.value=freq; f.Q.value=q;
+  const gn=ac.createGain(); gn.gain.setValueAtTime(0,now()); gn.gain.setValueAtTime(vol,now()+delay); gn.gain.exponentialRampToValueAtTime(0.001,now()+delay+sec);
+  n.connect(f).connect(gn).connect(dst); n.start(now()+delay);
+}
+// ---------- 3D sound ----------
+// Listener sits at the player facing "up" the screen: screen-up is forward (-z), screen-right is +x.
+// Each positioned sound goes through a lowpass whose cutoff drops when walls stand between
+// (path distance through the maze much longer than the straight line) — muffled steps behind a wall.
+let pathDist=null, pathDistAt=-1;
+function refreshPathDist(){
+  pathDist=new Int16Array(MW*MH).fill(-1);
+  const sx=player.x|0, sy=player.y|0, q=[sx+sy*MW]; pathDist[q[0]]=0;
+  for(let i=0;i<q.length;i++){
+    const c=q[i], x=c%MW, y=c/MW|0;
+    for(const [dx,dy] of [[1,0],[-1,0],[0,1],[0,-1]]){
+      const nx=x+dx, ny=y+dy, k=nx+ny*MW;
+      if(!solid(nx,ny) && pathDist[k]<0){ pathDist[k]=pathDist[c]+1; q.push(k); }
+    }
+  }
+}
+function muffle(x,y){
+  if(!pathDist) return 0;
+  const d=pathDist[(x|0)+(y|0)*MW], e=Math.hypot(x-player.x,y-player.y);
+  if(d<0) return 1;
+  return Math.max(0,Math.min(1,(d-e-1)/5));
+}
+function at(x,y,vol=1){
+  const p=ac.createPanner();
+  p.panningModel='HRTF'; p.distanceModel='inverse'; p.refDistance=1.5; p.rolloff=1; p.rolloffFactor=1;
+  let dx=x-player.x, dz=y-player.y;
+  if(flipView){ dx=-dx; dz=-dz; }
+  p.positionX.value=dx; p.positionY.value=0; p.positionZ.value=dz;
+  const m=muffle(x,y), lp=ac.createBiquadFilter();
+  lp.type='lowpass'; lp.frequency.value=9000*(1-m)+350*m;
+  const gn=ac.createGain(); gn.gain.value=vol*(1-m*0.45);
+  lp.connect(gn).connect(p).connect(master);
+  return lp;
+}
+function thumpAt(vol,x,y,freq=60){ osc('sine',freq*2,freq*0.5,0.35,vol,at(x,y)); }
+// each monster kind has its own sound signature so it can be recognised before it's seen
+const KIND_STEP={
+  hunter:(m,v)=>thumpAt(v,m.x,m.y,45),
+  statue:(m,v)=>noise(0.35,v*0.9,at(m.x,m.y),'lowpass',260,2),
+  crawler:(m,v)=>{ const d=at(m.x,m.y); for(let i=0;i<3;i++) noise(0.03,v*0.8,d,'highpass',3000,1,i*0.06); },
+  repeater:(m,v)=>drip(m.x,m.y,v*1.4),
+};
+function drip(x,y,v=0.5){ osc('sine',rnd(1500,1900),700,0.12,v,at(x,y)); }
+function whisperAt(x,y,v=0.6){
+  const d=at(x,y);
+  for(let i=0;i<5+(Math.random()*4|0);i++) noise(rnd(0.06,0.14),v*rnd(0.5,1),d,'bandpass',rnd(2200,4200),3,i*0.13);
+}
+
+function thump(vol=1, pan=0, freq=60){ if(vol>=1) guard(0.35); osc('sine',freq*2,freq*0.5,0.35,vol,out(pan)); }
+function heartbeat(vol){ for(const dt of [0,0.18]) osc('sine',55,45,0.2,vol,heartGain,dt); }
+
+// several distinct scare sounds so they don't blur into one
+const SCREAMS=[
+  (v)=>{ const d=out(); noise(1.4,v,d); for(const f of [310,333,470,620]) osc('sawtooth',f,f*1.6,1.4,v*0.25,d); },           // shriek
+  (v)=>{ const d=out(); noise(1.6,v*1.2,d,'lowpass',400,1); for(const f of [55,58,82]) osc('sawtooth',f,f*0.6,1.6,v*0.4,d); }, // roar
+  (v)=>{ const d=out(); for(let i=0;i<14;i++) noise(0.06,v,d,'highpass',800+Math.random()*4000,1,i*0.08); osc('square',1200,180,1.1,v*0.2,d); }, // glitch
+  (v)=>{ const d=out(); for(const f of [900,1340,1810,2400]) osc('sine',f,f*1.02,1.5,v*0.3,d); noise(1.5,v*0.5,d,'highpass',5000,1); }, // violin screech
+  (v)=>{ const d=out(); for(let i=0;i<6;i++) osc('sawtooth',rnd(200,500),rnd(80,150),0.25,v*0.35,d,i*0.15); noise(1.0,v*0.7,d,'bandpass',1200,0.5); }, // laughing stutter
+];
+function scream(vol=1){ guard(1.6); SCREAMS[Math.random()*SCREAMS.length|0](vol*settings.scare); }
+
+const TRAP_SOUNDS={
+  bell:(p)=>{ const d=out(p); for(const f of [523,1046,1568,2093]) osc('sine',f,f,2.5,0.35,d); },
+  glass:(p)=>{ const d=out(p); for(let i=0;i<20;i++) osc('sine',rnd(2000,7000),rnd(2000,7000),0.3,0.18,d,Math.random()*0.4); noise(0.6,0.9,d,'highpass',3000,0.5); },
+  scream:(p)=>scream(1),
+  radio:(p)=>{ const d=out(p); noise(1.8,1.0,d,'bandpass',1800,0.4); osc('square',440,445,1.8,0.15,d); },
+  crow:(p)=>{ const d=out(p); for(let i=0;i<4;i++){ osc('sawtooth',900,500,0.22,0.5,d,i*0.3); noise(0.22,0.5,d,'bandpass',1500,2,i*0.3); } },
+};
+
+
+// ---------- game ----------
+// what each kind can hear: voice (the mic), step (you walking), object (stones, toys, traps)
+const HEARS={hunter:['voice','object'], statue:[], crawler:['step','object'], repeater:['voice','object']};
+let room=ROOMS.studio;
+let breath={left:5, held:false, heldFor:0};
+let clipFrames=[], clipT=0;
+function alertMonsters(x,y,radius,force,sense='any'){
+  for(const m of monsters){
+    if(m.kind==='statue') continue;                                   // the statue only cares that you are loud
+    if(sense!=='any' && !HEARS[m.kind].includes(sense)) continue;
+    const d=Math.hypot(m.x-x,m.y-y);
+    if(force || d<radius){
+      m.target={x:x|0,y:y|0}; m.hunting=true; m.repath=0; m.lastLoud=t;
+      // the repeater answers with a fake echo somewhere near itself
+      if(m.kind==='repeater' && sense==='voice' && !m.mimic){
+        m.mimic=true;
+        later(1,()=>{ m.mimic=false; const p=nearestOpen((m.x+rnd(-4,4))|0,(m.y+rnd(-4,4))|0)||m;
+          pulses.push({x:p.x+0.5,y:p.y+0.5,r:0,max:4,s:0.5}); drip(p.x+0.5,p.y+0.5,0.8); });
+      }
+    }
+  }
+}
+function emitPulse(strength){
+  pulses.push({x:player.x,y:player.y,r:0,max:(2+strength*13)*(cfg.echo||1)*room.echo,s:Math.min(1,0.4+strength)});
+  levelPulses++; ach('first_sound');
+  if(lt<5) tw.earlyNoise=true;
+  if(task && task.kind==='once' && ++task.used===2){
+    // the room that forgives only one sound
+    placeMonsterNear(2); alertMonsters(player.x,player.y,0,true); hint('Второй раз.',3); marks.push({t,label:'второй звук'});
+  }
+  if(lt>cfg.wake && tw.kind!=='silenceHunter'){
+    if(t<fearUntil){ placeMonsterNear(4); fearUntil=0; marks.push({t,label:'ты вскрикнул'}); alertMonsters(player.x,player.y,0,true); ach('chain'); }
+    else alertMonsters(player.x,player.y,(4+strength*30)*room.hear,false,'voice');
+  }
+  if(ev.whisperArmed){ ev.whisperArmed=false; showFace(false); }
+}
+function placeMonsterNear(dist){
+  const m=monsters.find(x=>!x.ghost) || monsters[0]; if(!m) return;
+  m.ambush=false;
+  for(let i=0;i<300;i++){
+    const p=randomOpen(), path=bfs(player.x,player.y,p.x,p.y);
+    if(path && path.length>=dist && path.length<=dist+3){ m.x=p.x+0.5; m.y=p.y+0.5; m.path=[]; return; }
+  }
+}
+function showFace(lethal, dur){
+  const pool=ownedFaces();
+  let k; do{ k=pool[Math.random()*pool.length|0]; } while(k===lastFace && pool.length>1);
+  lastFace=faceKind=k; faceStart=t;
+  if(!stats.faces.includes(k)){ stats.faces.push(k); saveStats(); if(stats.faces.length>=FACES.length) ach('collector'); }
+  levelScares++;
+  if(lethal){
+    stats.deaths++; stats.bodies[bodyKey()]=[player.x|0,player.y|0];
+    saveStats(); endProfile(); ach('heard'); if(stats.deaths>=50) ach('stubborn');
+  }
+  faceUntil=t+(dur||(lethal?1.5:0.7)); flash=1;
+  scream(lethal?1:0.75);
+  marks.push({t,label:lethal?'смерть':'скример'});
+  fearUntil=t+2.5;
+  if(lethal){ dead=true; later(1.7,()=>finish(false)); }
+}
+
+function move(o,dx,dy,r){
+  const nx=o.x+dx, ny=o.y+dy;
+  if(!solid((nx+Math.sign(dx)*r)|0,o.y|0)) o.x=nx;
+  if(!solid(o.x|0,(ny+Math.sign(dy)*r)|0)) o.y=ny;
+}
+
+// ---------- tools ----------
+function throwItem(kind, tx, ty){
+  if(dead || !running) return;
+  if(kind==='stone' ? items.stones<=0 : items.toy<=0) return;
+  let vx=tx-player.x, vy=ty-player.y; const l=Math.hypot(vx,vy); if(l<0.01) return;
+  vx/=l; vy/=l;
+  if(kind==='stone') items.stones--; else items.toy--;
+  projectiles.push({kind,x:player.x,y:player.y,vx,vy,dist:0,max:Math.min(7,l)});
+}
+function land(p){
+  const x=p.x, y=p.y;
+  if(p.kind==='stone'){
+    guard(0.4); thumpAt(0.9,x,y,95); noise(0.08,0.6,at(x,y),'highpass',2000,1);
+    pulses.push({x,y,r:0,max:3.5*room.echo,s:0.7});
+    alertMonsters(x,y,12*room.hear,false,'object'); ach('thrower');
+  } else {
+    toys.push({x,y,left:8,tick:0,call:0}); ach('toy');
+  }
+}
+function updateTools(dt){
+  for(const p of projectiles){
+    const step=10*dt, nx=p.x+p.vx*step, ny=p.y+p.vy*step;
+    if(solid(nx|0,ny|0) || p.dist+step>=p.max){ p.done=true; land(p); continue; }
+    p.x=nx; p.y=ny; p.dist+=step;
+  }
+  projectiles=projectiles.filter(p=>!p.done);
+  for(const toy of toys){
+    toy.left-=dt; toy.tick-=dt; toy.call-=dt;
+    if(toy.tick<=0){ toy.tick=0.25; osc('square',2100,1900,0.03,0.25,at(toy.x,toy.y)); }
+    if(toy.call<=0){ toy.call=1; pulses.push({x:toy.x,y:toy.y,r:0,max:1.6,s:0.4}); alertMonsters(toy.x,toy.y,14*room.hear,false,'object'); }
+  }
+  toys=toys.filter(x=>x.left>0);
+}
+// holding the breath: the mic is ignored and you move at half speed, for up to 5 s.
+// Letting go early is a quiet exhale; running out is a loud gasp everything hears.
+function updateBreath(dt){
+  const want=keys.Space || touch.breath;
+  if(want && !breath.held && breath.left>0.5){ breath.held=true; breath.heldFor=0; }
+  if(breath.held){
+    breath.left-=dt; breath.heldFor+=dt;
+    if(breath.heldFor>4) ach('breath');
+    if(!want){ breath.held=false; noise(0.5,0.06,out(0),'lowpass',700,1); }
+    else if(breath.left<=0){
+      breath.held=false; breath.left=0;
+      guard(0.7); noise(0.6,0.7,out(0),'bandpass',900,0.6);
+      emitPulse(0.6); hint('Ты не выдержал.',2);
+    }
+  } else breath.left=Math.min(5,breath.left+dt);
+}
+
+function updateLandmarks(dt){
+  for(const lm of landmarks){
+    if(Math.hypot(lm.x-player.x,lm.y-player.y)>16) continue;
+    lm.t-=dt; if(lm.t>0) continue;
+    const x=lm.x+0.5, y=lm.y+0.5;
+    if(lm.kind==='drip'){ lm.t=rnd(1.2,2.2); drip(x,y,0.35); }
+    if(lm.kind==='hum'){ lm.t=0.85; osc('sawtooth',100,100,0.9,0.03,at(x,y)); }
+    if(lm.kind==='creak'){ lm.t=rnd(6,12); osc('sawtooth',rnd(180,260),rnd(110,150),0.7,0.12,at(x,y)); }
+  }
+}
+
+function updateTask(){
+  if(!task || task.done) return;
+  const cx=player.x|0, cy=player.y|0;
+  if(task.kind==='power'){
+    for(const f of task.fuses) if(!f.got && f.x===cx && f.y===cy){
+      f.got=true; osc('square',220,880,0.15,0.3,out(0));
+      const n=task.fuses.filter(x=>x.got).length;
+      hint(`Предохранители: ${n} / 3`,2);
+      if(n===3){ task.done=true; thump(0.9,0,50); hint('Питание есть. Выход открыт.',3); ach('power'); }
+    }
+  }
+  if(task.kind==='whisper'){
+    task.t-=1/60;
+    if(task.t<=0){ task.t=1.4; whisperAt(task.src.x+0.5,task.src.y+0.5,0.8); }
+    if(cx===task.src.x && cy===task.src.y){ task.done=true; hint('Шёпот стих. Выход открыт.',3); ach('source'); }
+  }
+}
+
+const KIND_SPEED={hunter:1, statue:1.15, crawler:1.1, repeater:0.95};
+function updateMonsters(dt, moving){
+  const L=cfg;
+  // this level it hunts silence instead of sound
+  if(tw.kind==='silenceHunter' && lt>L.wake && silentFor>2.5 && (ev.sh=(ev.sh||0)-dt)<=0){ ev.sh=1.5; alertMonsters(player.x,player.y,0,true,'voice'); }
+  const noisy = t-lastPulse<0.6;
+  for(const m of monsters){
+    m.seen=Math.max(0,m.seen-dt*0.8);
+    if(lt<=L.wake) continue;
+    const pd=Math.hypot(m.x-player.x,m.y-player.y);
+    if(m.ambush){
+      // waits where you usually go, perfectly still
+      if(pd>5) continue;
+      m.ambush=false; m.target={x:player.x|0,y:player.y|0}; m.hunting=true; m.lastLoud=t; m.repath=0;
+    }
+    let go=true, speed;
+    if(m.kind==='statue'){
+      // moves only while you are loud, and freezes while the echo is on it
+      go = noisy && m.seen<0.3;
+      m.target={x:player.x|0,y:player.y|0}; m.hunting=true;
+      speed=L.hunt*KIND_SPEED.statue;
+    } else {
+      if(m.kind==='crawler' && moving && pd<7*room.hear*(room.water?1.5:1)) alertMonsters(player.x,player.y,0,true,'step');
+      if(m.hunting && t-m.lastLoud>10){ m.hunting=false; m.target=null; }   // forgot you
+      speed=(m.hunting?L.hunt:1.0)*KIND_SPEED[m.kind];
+    }
+    m.repath-=dt;
+    if(m.repath<=0 && go){
+      m.repath=0.6;
+      if(!m.target || (!m.hunting && Math.hypot(m.target.x+0.5-m.x,m.target.y+0.5-m.y)<1)) m.target = m.hunting ? m.target : randomOpen();
+      m.path = bfs(m.x,m.y,m.target.x,m.target.y)||[]; m.path.shift();
+    }
+    const nxt=go && m.path[0];
+    if(nxt){
+      const tx=nxt[0]+0.5, ty=nxt[1]+0.5, d=Math.hypot(tx-m.x,ty-m.y), sp=speed*dt;
+      if(d<sp){ m.x=tx; m.y=ty; m.path.shift(); }
+      else { m.x+=(tx-m.x)/d*sp; m.y+=(ty-m.y)/d*sp; }
+    } else if(go && m.hunting && m.kind!=='statue'){ m.hunting=false; m.target=null; }
+    m.step-=dt;
+    if(nxt && m.step<=0 && pd<14){ m.step=m.hunting?0.38:0.75; KIND_STEP[m.kind](m,Math.min(0.7,1.5/pd)); }
+    if(m.kind==='hunter' && pd<10 && (m.whisper-=dt)<=0){
+      // it tries to speak; sometimes you make out a word
+      m.whisper=rnd(20,40); whisperAt(m.x,m.y,0.5);
+      if(Math.random()<0.3) hint(['«…не шуми…»','«…Вера…»','«…тише…»','«…я слышу…»'][Math.random()*4|0],2);
+    }
+    m.beat-=dt;
+    if(m.beat<=0 && pd<9){ m.beat=0.35+pd*0.1; heartbeat(Math.min(1,(9-pd)/6)*0.6); }
+    if(pd<0.6){
+      if(!m.ghost) showFace(true);
+      else if(!ev.ghostTouch){ ev.ghostTouch=1; heartbeat(1); hint('Что-то прошло сквозь тебя.',4); }
+    }
+  }
+}
+
+function update(dt){
+  t+=dt; lt+=dt;
+  const rms=micRms(); lastRms=rms;
+  loud=Math.max(0,Math.min(1,(rms-floor)/0.12*sens));
+  const deaf=isDeaf() || breath.held;
+  if(deaf) loud=0;
+  if(history.length===0||t-history[history.length-1].t>0.2) history.push({t,v:loud});
+  if(dead) return;
+  updateBreath(dt);
+  if(!isDeaf()){
+    if(!breath.held && loud>0.07 && t-lastPulse>0.3){ lastPulse=t; emitPulse(loud); }
+    silentFor = loud<0.05 ? silentFor+dt : 0;              // holding the breath counts as silence
+  }
+  if(pathDistAt<0 || lt-pathDistAt>0.3){ pathDistAt=lt; refreshPathDist(); }
+
+  let dx=(keys.KeyD||keys.ArrowRight?1:0)-(keys.KeyA||keys.ArrowLeft?1:0)+touch.dx;
+  let dy=(keys.KeyS||keys.ArrowDown?1:0)-(keys.KeyW||keys.ArrowUp?1:0)+touch.dy;
+  if(flipView && touch.active){ dx=-dx; dy=-dy; }
+  const l=Math.hypot(dx,dy), moving=l>0.15;
+  if(moving){ const k=Math.min(1,l)/l*2.6*(breath.held?0.5:1)*dt; move(player,dx*k,dy*k,0.25); }
+  const P=stats.prof;
+  if(dx<0) P.L+=dt; if(dx>0) P.R+=dt; if(dy<0) P.U+=dt; if(dy>0) P.D+=dt;
+  if(room.water && moving && (ev.splash=(ev.splash||0)-dt)<=0){
+    // water: every step splashes, and the splash is a small echo that walkers hear
+    ev.splash=breath.held?0.9:0.45;
+    noise(0.2,0.15,out(0),'bandpass',1200,0.8);
+    pulses.push({x:player.x,y:player.y,r:0,max:2,s:0.35});
+    alertMonsters(player.x,player.y,5,false,'step');
+  }
+
+  for(const p of pulses){
+    p.r+=9*dt;
+    const r0=Math.max(0,p.r-1.2);
+    for(let y=Math.max(0,(p.y-p.r-1)|0); y<Math.min(MH,p.y+p.r+1); y++)
+      for(let x=Math.max(0,(p.x-p.r-1)|0); x<Math.min(MW,p.x+p.r+1); x++){
+        const d=Math.hypot(x+0.5-p.x,y+0.5-p.y);
+        if(d>=r0&&d<=p.r) lit[y][x]=Math.max(lit[y][x],p.s*(1-d/p.max*0.7));
+      }
+    for(const m of monsters){
+      if(m.ghost) continue;
+      const md=Math.hypot(m.x-p.x,m.y-p.y);
+      if(md>=r0&&md<=p.r&&md<p.max){ m.seen=Math.max(m.seen,p.s); ach('eyes'); }
+    }
+  }
+  pulses=pulses.filter(p=>p.r<p.max);
+  for(const row of lit) for(let x=0;x<row.length;x++) row[x]=Math.max(0,row[x]-dt*0.45);
+
+  updateTools(dt);
+  updateLandmarks(dt);
+  updateTask();
+
+  // a fair warning: the room's hum dies away next to an armed trap
+  if(droneGain){
+    const near=traps.some(tr=>!tr.used && Math.hypot(tr.x+0.5-player.x,tr.y+0.5-player.y)<2.5);
+    droneGain.gain.setTargetAtTime(near?0.12:1,ac.currentTime,0.25);
+  }
+
+  // traps: a loud surprise that also tells every monster where you are
+  for(const tr of traps){
+    if(tr.used || (player.x|0)!==tr.x || (player.y|0)!==tr.y) continue;
+    tr.used=true;
+    guard(tr.kind==='bell'?2.5:1.8); TRAP_SOUNDS[tr.kind](0);
+    flash=0.8; marks.push({t,label:'ловушка'}); levelTraps++; levelScares++; ach('trap');
+    if(tr.kind==='scream' || Math.random()<0.45*settings.scareFreq) showFace(false, 0.6);
+    fearUntil=t+2.5;
+    if(lt>cfg.wake*0.5) alertMonsters(tr.x,tr.y,0,true,'object');
+  }
+
+  updateMonsters(dt, moving);
+  if(dead) return;
+
+  // the last 5 seconds, kept for the death replay
+  if((clipT-=dt)<=0){
+    clipT=1/15;
+    clipFrames.push({px:player.x,py:player.y,loud,ms:monsters.filter(m=>!m.ghost).map(m=>[m.x,m.y,m.kind]),ps:pulses.map(p=>[p.x,p.y,p.r])});
+    if(clipFrames.length>75) clipFrames.shift();
+  }
+
+  const L=cfg;
+  if(L.fresh && !ev.freshHint && lt>3){ ev.freshHint=1; hint(KIND_HINT[L.fresh],7); }
+  if(task && !ev.taskHint && lt>1){ ev.taskHint=1; hint(TASK_TEXT[task.kind],6); }
+
+  if(tw.bigAt && lt>tw.bigAt && !ev.big){ ev.big=1; placeMonsterNear(3); showFace(false,1.3); alertMonsters(player.x,player.y,0,true); }
+
+  if(tw.crashAt && lt>tw.crashAt && !ev.crash){
+    // a fake "page not responding" freeze, then the scare
+    ev.crash=1; tw.frozen=true; if(master) master.gain.value=0;
+    document.getElementById('crash').classList.remove('hidden');
+    later(3.2,()=>{
+      document.getElementById('crash').classList.add('hidden');
+      if(master) master.gain.value=settings.volume*(tw.night?0.7:1);
+      tw.frozen=false; showFace(false,1.5);
+    });
+    return;
+  }
+
+  if(tw.note && !tw.note.read && (player.x|0)===tw.note.x && (player.y|0)===tw.note.y){
+    tw.note.read=true; hint(NOTES[tw.note.i],8);
+    if(!stats.notes.includes(tw.note.i)){ stats.notes.push(tw.note.i); saveStats(); if(stats.notes.length>=NOTES.length) ach('reader'); }
+  }
+
+  if(tw.fake && Math.hypot(player.x-(tw.fake.x+0.5),player.y-(tw.fake.y+0.5))<0.7){
+    tw.fake=null; levelScares++;
+    guard(1.2); thump(1.4,0,30); osc('sawtooth',90,40,1.2,0.5,out(0)); flash=0.7;
+    placeMonsterNear(4); alertMonsters(player.x,player.y,0,true);
+    hint('Это был не выход.',3); marks.push({t,label:'ложный выход'}); ach('fooled');
+  }
+
+  // scripted scares per level
+  const E=tw.kind==='empty' ? [] : L.events;
+  if(E.includes('intro')){
+    if(lt>4&&!ev.i1){ev.i1=1; hint('Скажи что-нибудь. Шёпот, щелчок, хлопок. Клик — бросить камень, пробел — задержать дыхание.',7);}
+    if(lt>L.wake&&!ev.i2){ev.i2=1; hint('Ты здесь не один.',5);}
+  }
+  if(E.includes('bang') && !ev.bang && lt>rnd(25,60)/settings.scareFreq){ ev.bang=1; levelScares++; thump(1.4,0.3,35); thump(1.2,-0.3,30); flash=0.6; fearUntil=t+2; marks.push({t,label:'стук'}); }
+  if(E.includes('whisper') && !ev.whisper && lt>60){ ev.whisper=1; ev.whisperArmed=true; hint('Что-то совсем рядом… прошепчи, чтобы рассмотреть.',6); }
+  if(E.includes('lights') && !ev.lights && lt>35){
+    // the whole maze flashes for a moment, and the monster is standing right behind you
+    ev.lights=1; levelScares++; placeMonsterNear(3);
+    for(let y=0;y<MH;y++) for(let x=0;x<MW;x++) lit[y][x]=1;
+    for(const m of monsters) m.seen=1;
+    thump(1.3,0,40); marks.push({t,label:'свет'}); ach('lights');
+  }
+
+  if(exitOpen() && Math.hypot(player.x-(exit.x+0.5),player.y-(exit.y+0.5))<0.7){
+    if(tw.loop && !tw.looped){
+      // the exit leads back into the same room, upside down, and it is already waiting
+      tw.looped=true; flipView=!flipView; levelScares++;
+      player.x=1.5; player.y=1.5;
+      exit=[{x:MW-2,y:MH-2},{x:MW-2,y:1},{x:1,y:MH-2}].filter(p=>p.x!==exit.x||p.y!==exit.y)[Math.random()*2|0];
+      for(const row of lit) row.fill(0);
+      placeMonsterNear(6); thump(1.2,0,30); flash=0.5;
+      hint('Ты уже был здесь.',4); marks.push({t,label:'та же комната'}); ach('loop');
+      return;
+    }
+    dead=true; levelComplete();
+    if(E.includes('door')){
+      later(1.2,()=>showFace(false,1.2));
+      later(2.8,nextLevel);
+    } else later(0.4,nextLevel);
+  }
+}
+
+// ---------- screamers ----------
+function shake(a){ return (Math.random()-0.5)*a*settings.shake; }
+const FACES=[
+  // pale face with black eyes and open mouth
+  (s,p)=>{
+    const grd=g.createRadialGradient(0,-s*0.05,s*0.05,0,0,s*0.5);
+    grd.addColorStop(0,'#d8d2c4'); grd.addColorStop(0.7,'#6b6359'); grd.addColorStop(1,'#000');
+    g.fillStyle=grd; g.beginPath(); g.ellipse(0,0,s*0.33,s*0.47,0,0,7); g.fill();
+    g.fillStyle='#000'; for(const sx of [-1,1]){ g.beginPath(); g.ellipse(sx*s*0.12,-s*0.1,s*0.07,s*0.1,sx*0.3,0,7); g.fill(); }
+    g.fillStyle='#fff'; for(const sx of [-1,1]){ g.beginPath(); g.arc(sx*s*0.12,-s*0.09,s*0.008,0,7); g.fill(); }
+    g.fillStyle='#000'; g.beginPath(); g.ellipse(0,s*0.22,s*0.1,s*(0.15+p*0.1),0,0,7); g.fill();
+  },
+  // dozens of eyes opening in the dark
+  (s,p)=>{
+    const R=mulberry(7);
+    for(let i=0;i<40;i++){
+      const x=(R()-0.5)*W, y=(R()-0.5)*H, r=s*(0.02+R()*0.06), open=Math.min(1,p*3-R()*0.8);
+      if(open<=0) continue;
+      g.fillStyle='#e8e0d0'; g.beginPath(); g.ellipse(x,y,r*1.6,r*open,0,0,7); g.fill();
+      g.fillStyle='#600'; g.beginPath(); g.arc(x+shake(r*0.3),y,r*0.6*open,0,7); g.fill();
+      g.fillStyle='#000'; g.beginPath(); g.arc(x,y,r*0.25*open,0,7); g.fill();
+    }
+  },
+  // grin full of teeth
+  (s,p)=>{
+    g.fillStyle='#200'; g.beginPath(); g.ellipse(0,0,s*0.55,s*0.28*(0.6+p*0.6),0,0,7); g.fill();
+    g.fillStyle='#ddd8c8';
+    for(let i=-9;i<=9;i++){
+      const x=i*s*0.055, top=-s*0.17*(0.6+p*0.6), bot=-top, w=s*0.025, len=s*(0.09+Math.abs(Math.sin(i))*0.05);
+      g.beginPath(); g.moveTo(x-w,top); g.lineTo(x+w,top); g.lineTo(x,top+len); g.fill();
+      g.beginPath(); g.moveTo(x-w,bot); g.lineTo(x+w,bot); g.lineTo(x+s*0.02,bot-len); g.fill();
+    }
+  },
+  // girl behind black hair, one eye visible
+  (s,p)=>{
+    g.fillStyle='#9a958c'; g.beginPath(); g.ellipse(0,s*0.05,s*0.3,s*0.42,0,0,7); g.fill();
+    g.fillStyle='#000'; g.beginPath(); g.arc(s*0.1,-s*0.05,s*0.05,0,7); g.fill();
+    g.fillStyle='#fff'; g.beginPath(); g.arc(s*0.1,-s*0.05,s*0.01,0,7); g.fill();
+    g.strokeStyle='#050505'; g.lineWidth=s*0.012;
+    const R=mulberry(3);
+    for(let i=0;i<90;i++){
+      const x0=(R()-0.5)*s*0.8; if(x0>s*0.04&&x0<s*0.17) continue;
+      g.beginPath(); g.moveTo(x0,-s*0.55);
+      g.bezierCurveTo(x0+shake(8),-s*0.1,x0+(R()-0.5)*s*0.2,s*0.2,x0+(R()-0.5)*s*0.3,s*0.6+p*s*0.2); g.stroke();
+    }
+  },
+  // long-limbed thing crawling at you
+  (s,p)=>{
+    g.strokeStyle='#d0c8b8'; g.lineCap='round';
+    const R=mulberry(11);
+    for(let i=0;i<8;i++){
+      const a=i/8*Math.PI*2+0.3, l=s*(0.5+R()*0.4)*(0.5+p*0.7);
+      g.lineWidth=s*0.03;
+      g.beginPath(); g.moveTo(0,0);
+      const kx=Math.cos(a)*l*0.5+shake(10), ky=Math.sin(a)*l*0.5-s*0.1;
+      g.lineTo(kx,ky); g.lineTo(Math.cos(a)*l,Math.sin(a)*l); g.stroke();
+    }
+    g.fillStyle='#c8c0b0'; g.beginPath(); g.ellipse(0,0,s*0.13,s*0.17,0,0,7); g.fill();
+    g.fillStyle='#000'; for(const sx of [-1,1]){ g.beginPath(); g.arc(sx*s*0.045,-s*0.03,s*0.03,0,7); g.fill(); }
+    g.beginPath(); g.ellipse(0,s*0.08,s*0.06,s*0.05,0,0,7); g.fill();
+  },
+  // hands slamming against the screen from the other side
+  (s,p)=>{
+    const R=mulberry(5);
+    for(let i=0;i<Math.min(6,1+(p*10|0));i++){
+      const x=(R()-0.5)*W*0.8, y=(R()-0.5)*H*0.7, sc=s*(0.25+R()*0.15), rot=(R()-0.5);
+      g.save(); g.translate(x,y); g.rotate(rot);
+      g.fillStyle='rgba(200,190,175,0.92)';
+      g.beginPath(); g.ellipse(0,sc*0.25,sc*0.28,sc*0.32,0,0,7); g.fill();
+      for(let f=0;f<5;f++){ const fx=(f-2)*sc*0.13, len=sc*(f===0||f===4?0.35:0.55);
+        g.beginPath(); g.ellipse(fx*(f===0?1.6:1),-len*0.5+(f===0?sc*0.25:0),sc*0.055,len*0.55,(f-2)*0.15,0,7); g.fill(); }
+      g.fillStyle='rgba(100,0,0,0.5)'; g.fillRect(-sc*0.3,sc*0.4,sc*0.6,sc*0.4*(0.5+R()));
+      g.restore();
+    }
+  },
+  // skull
+  (s,p)=>{
+    g.fillStyle='#d6cfbf'; g.beginPath(); g.ellipse(0,-s*0.08,s*0.3,s*0.32,0,0,7); g.fill();
+    g.fillRect(-s*0.16,s*0.15,s*0.32,s*0.16);
+    g.fillStyle='#000';
+    for(const sx of [-1,1]){ g.beginPath(); g.ellipse(sx*s*0.12,-s*0.06,s*0.09,s*0.1,0,0,7); g.fill(); }
+    g.beginPath(); g.moveTo(0,s*0.04); g.lineTo(-s*0.04,s*0.12); g.lineTo(s*0.04,s*0.12); g.fill();
+    for(let i=-3;i<=3;i++) g.fillRect(i*s*0.045-1,s*0.18,2,s*0.12*(0.5+p));
+    g.fillStyle='#f22'; for(const sx of [-1,1]){ g.beginPath(); g.arc(sx*s*0.12,-s*0.06,s*0.015*p,0,7); g.fill(); }
+  },
+  // the first face, upside down
+  (s,p)=>{ g.rotate(Math.PI+shake(0.1)); FACES[0](s,p); },
+  // figure in TV static
+  (s,p)=>{
+    for(let i=0;i<1400;i++){ const v=Math.random()*200|0; g.fillStyle=`rgb(${v},${v},${v})`; g.fillRect((Math.random()-0.5)*W,(Math.random()-0.5)*H,4,4); }
+    g.fillStyle='#000'; g.beginPath(); g.ellipse(0,-s*0.2,s*0.1,s*0.13,0,0,7); g.fill();
+    g.beginPath(); g.moveTo(-s*0.2,s*0.6); g.lineTo(-s*0.08,-s*0.08); g.lineTo(s*0.08,-s*0.08); g.lineTo(s*0.2,s*0.6); g.fill();
+  },
+  // spiders pouring over the screen
+  (s,p)=>{
+    const R=mulberry(13); g.strokeStyle='#111'; g.fillStyle='#0a0a0a'; g.lineWidth=2;
+    g.fillStyle='#3a2a20'; g.fillRect(-W/2,-H/2,W,H); g.fillStyle='#080808';
+    for(let i=0;i<(p*120|0);i++){
+      const x=(R()-0.5)*W+shake(6), y=(R()-0.5)*H+shake(6), r=s*(0.01+R()*0.025);
+      g.beginPath(); g.arc(x,y,r,0,7); g.fill();
+      for(let l=0;l<8;l++){ const a=l/8*7; g.beginPath(); g.moveTo(x,y); g.lineTo(x+Math.cos(a)*r*3,y+Math.sin(a)*r*3+r); g.stroke(); }
+    }
+  },
+  // the text that knows
+  (s,p)=>{
+    g.fillStyle='#7a0000'; g.textAlign='center'; g.font=`bold ${s*0.14|0}px Georgia`;
+    g.fillText('Я ТЕБЯ',shake(10),-s*0.05); g.fillText('СЛЫШУ',shake(10),s*0.12);
+    for(let i=0;i<20;i++){ const x=(mulberry(i)()-0.5)*s*0.8; g.fillRect(x,s*0.14,3,s*0.4*p*mulberry(i+50)()); }
+  },
+  // cracked porcelain doll
+  (s,p)=>{
+    g.fillStyle='#f0e8e0'; g.beginPath(); g.arc(0,0,s*0.32,0,7); g.fill();
+    g.fillStyle='rgba(220,90,100,0.6)'; for(const sx of [-1,1]){ g.beginPath(); g.arc(sx*s*0.17,s*0.08,s*0.06,0,7); g.fill(); }
+    g.fillStyle='#235'; for(const sx of [-1,1]){ g.beginPath(); g.arc(sx*s*0.11,-s*0.06,s*0.06,0,7); g.fill(); }
+    g.fillStyle='#000'; for(const sx of [-1,1]){ g.beginPath(); g.arc(sx*s*0.11+shake(4),-s*0.06,s*0.025,0,7); g.fill(); }
+    g.fillStyle='#a00'; g.beginPath(); g.ellipse(0,s*0.16,s*0.04,s*0.02+p*s*0.03,0,0,7); g.fill();
+    g.strokeStyle='#222'; g.lineWidth=2; const R=mulberry(17);
+    for(let c=0;c<5;c++){ g.beginPath(); let x=(R()-0.5)*s*0.4, y=-s*0.3; g.moveTo(x,y); for(let k=0;k<6;k++){ x+=(R()-0.5)*s*0.1; y+=s*0.08*p; g.lineTo(x,y);} g.stroke(); }
+  },
+  // tall shadow in a doorway
+  (s,p)=>{
+    g.fillStyle='#2a2620'; g.fillRect(-s*0.22,-s*0.5,s*0.44,s);
+    g.fillStyle='#000'; g.beginPath(); g.ellipse(0,-s*0.32,s*0.06,s*0.08,0,0,7); g.fill();
+    g.fillRect(-s*0.09,-s*0.25,s*0.18,s*0.75);
+    g.fillRect(-s*0.16,-s*0.22,s*0.06,s*0.5*(0.7+p*0.5)); g.fillRect(s*0.1,-s*0.22,s*0.06,s*0.5*(0.7+p*0.5));
+    g.fillStyle='#fff'; for(const sx of [-1,1]){ g.beginPath(); g.arc(sx*s*0.025,-s*0.33,s*0.009,0,7); g.fill(); }
+  },
+  // sewn lips tearing open
+  (s,p)=>{
+    g.fillStyle='#8a5550'; g.beginPath(); g.ellipse(0,0,s*0.45,s*0.18,0,0,7); g.fill();
+    g.fillStyle='#000'; g.beginPath(); g.ellipse(0,0,s*0.4,s*0.01+p*s*0.1,0,0,7); g.fill();
+    g.strokeStyle='#111'; g.lineWidth=3;
+    for(let i=-6;i<=6;i++){ g.beginPath(); g.moveTo(i*s*0.055,-s*0.08); g.lineTo(i*s*0.055+s*0.02,s*0.08); g.stroke(); }
+  },
+  // face that is nothing but noise
+  (s,p)=>{
+    for(let y=-s*0.45;y<s*0.45;y+=8) for(let x=-s*0.32;x<s*0.32;x+=8){
+      const inFace=(x*x)/(s*s*0.1)+(y*y)/(s*s*0.2)<1; if(!inFace) continue;
+      const eye=[[-1],[1]].some(([sx])=>Math.hypot(x-sx*s*0.12,y+s*0.08)<s*0.07), mouth=Math.hypot(x,(y-s*0.2)*0.6)<s*0.07;
+      const v=eye||mouth?0:Math.random()*255|0; g.fillStyle=`rgb(${v},${v*0.9|0},${v*0.9|0})`; g.fillRect(x,y,8,8);
+    }
+  },
+  // someone standing right behind you
+  (s,p)=>{
+    g.fillStyle='#111'; g.beginPath(); g.ellipse(0,s*0.05,s*0.25,s*0.33,0,0,7); g.fill();
+    g.fillStyle='#ddd'; g.beginPath(); g.arc(-s*0.05,s*0.25,s*0.05,0,7); g.fill();
+    g.fillStyle='#bbb2a5'; g.beginPath(); g.ellipse(s*0.12*(1-p*0.4),-s*0.1,s*0.15,s*0.2,0.2,0,7); g.fill();
+    g.fillStyle='#000'; g.beginPath(); g.arc(s*0.12*(1-p*0.4)-s*0.04,-s*0.13,s*0.03,0,7); g.fill();
+    g.fillStyle='#ddd'; g.font=`${s*0.04|0}px Georgia`; g.textAlign='center'; g.fillText('это ты',-s*0.05,s*0.36);
+  },
+  // tentacles from the edges
+  (s,p)=>{
+    g.strokeStyle='#3b1a24'; g.lineCap='round'; const R=mulberry(23);
+    for(let i=0;i<16;i++){
+      const a=R()*7, x0=Math.cos(a)*W, y0=Math.sin(a)*H; g.lineWidth=s*(0.02+R()*0.04);
+      g.beginPath(); g.moveTo(x0,y0);
+      g.quadraticCurveTo(x0*0.5+shake(60),y0*0.5+shake(60),x0*(1-p*0.95),y0*(1-p*0.95)); g.stroke();
+    }
+  },
+  // painted smile
+  (s,p)=>{
+    g.fillStyle='#f4f0ea'; g.beginPath(); g.ellipse(0,0,s*0.3,s*0.4,0,0,7); g.fill();
+    g.fillStyle='#000'; for(const sx of [-1,1]){ g.beginPath(); g.arc(sx*s*0.11,-s*0.1,s*0.04,0,7); g.fill(); }
+    g.strokeStyle='#b00'; g.lineWidth=s*0.03; g.beginPath(); g.arc(0,s*0.02,s*0.2,0.15,Math.PI-0.15); g.stroke();
+    g.fillStyle='#b00'; g.beginPath(); g.ellipse(0,s*0.15,s*0.12,s*0.04+p*s*0.06,0,0,7); g.fill();
+  },
+  // a crowd of small faces all turning to you
+  (s,p)=>{
+    const R=mulberry(29);
+    for(let i=0;i<30;i++){
+      const x=(R()-0.5)*W*0.9, y=(R()-0.5)*H*0.9, r=s*0.05, look=Math.min(1,p*2-R());
+      g.fillStyle='#8c867c'; g.beginPath(); g.arc(x,y,r,0,7); g.fill();
+      if(look>0){ g.fillStyle='#000'; for(const sx of [-1,1]){ g.beginPath(); g.arc(x+sx*r*0.35,y-r*0.1,r*0.15,0,7); g.fill(); } g.fillRect(x-r*0.2,y+r*0.4,r*0.4,r*0.15); }
+    }
+  },
+  // melting, sliced version of the first face
+  (s,p)=>{
+    const bw=s*0.06;
+    for(let i=-8;i<8;i++){
+      g.save(); g.beginPath(); g.rect(i*bw,-s,bw,s*2); g.clip();
+      g.translate(0,Math.sin(i*1.7)*s*0.15*p); FACES[0](s,p); g.restore();
+    }
+  },
+];
+function mulberry(a){ return ()=>{ a|=0; a=a+0x6D2B79F5|0; let t2=Math.imul(a^a>>>15,1|a); t2=t2+Math.imul(t2^t2>>>7,61|t2)^t2; return ((t2^t2>>>14)>>>0)/4294967296; }; }
+
+function drawFace(){
+  const s=Math.min(W,H)*0.95, p=Math.min(1,(t-faceStart)/0.4);
+  g.fillStyle=Math.random()<0.1?'#300':'#000'; g.fillRect(0,0,W,H);
+  g.save(); g.translate(W/2+shake(24),H/2+shake(24)); g.scale(0.8+p*0.35,0.8+p*0.35);
+  FACES[faceKind](s,p);
+  g.restore();
+  g.fillStyle=`rgba(120,0,0,${0.15+Math.random()*0.2})`; g.fillRect(0,0,W,H);
+  if(settings.flashes && Math.random()<0.3){ g.fillStyle='rgba(255,255,255,0.08)'; g.fillRect(0,Math.random()*H,W,rnd(4,40)); }
+}
+
+const tileSize=()=>Math.min(W/21,H/15)*1.6;
+function screenToWorld(sx,sy){
+  const ts=tileSize(); let dx=(sx-W/2)/ts, dy=(sy-H/2)/ts;
+  if(flipView){ dx=-dx; dy=-dy; }
+  return {x:player.x+dx, y:player.y+dy};
+}
+function draw(){
+  if(t<faceUntil){ drawFace(); return; }
+  g.fillStyle='#000'; g.fillRect(0,0,W,H);
+  const ts=tileSize();
+  const ox=W/2-player.x*ts, oy=H/2-player.y*ts;
+  const [wr,wg,wb]=room.wall;
+  g.save();
+  if(flipView){ g.translate(W/2,H/2); g.scale(-1,-1); g.translate(-W/2,-H/2); }
+  for(let y=0;y<MH;y++) for(let x=0;x<MW;x++){
+    const l=lit[y][x]; if(l<=0.01) continue;
+    const liar=!!(lie&&lie[y][x]);
+    const wall=(map[y][x]===1)!==liar;     // a lying echo shows walls that aren't there and hides real ones
+    if(wall){
+      g.fillStyle=`rgba(${wr},${wg},${wb},${l})`; g.fillRect(ox+x*ts,oy+y*ts,ts+1,ts+1);
+      // the tell: a false wall comes back as a doubled, slightly shifted reflection
+      if(liar){ g.fillStyle=`rgba(${wr},${wg},${wb},${l*0.35})`; g.fillRect(ox+x*ts+ts*0.12,oy+y*ts-ts*0.08,ts,ts); }
+    }
+    else if(x===exit.x&&y===exit.y && exitOpen()){ g.fillStyle=`rgba(90,220,120,${l})`; g.fillRect(ox+x*ts+ts*0.2,oy+y*ts+ts*0.2,ts*0.6,ts*0.6); }
+    else if(x===exit.x&&y===exit.y){ g.strokeStyle=`rgba(90,120,100,${l*0.6})`; g.lineWidth=2; g.strokeRect(ox+x*ts+ts*0.2,oy+y*ts+ts*0.2,ts*0.6,ts*0.6); }
+    else if(tw.fake&&x===tw.fake.x&&y===tw.fake.y){
+      // the tell: a false exit is a touch more yellow and its light trembles
+      g.fillStyle=`rgba(125,220,95,${l*(0.82+0.18*Math.sin(t*9))})`; g.fillRect(ox+x*ts+ts*0.2,oy+y*ts+ts*0.2,ts*0.6,ts*0.6);
+    }
+  }
+  if(task && task.kind==='power') for(const f of task.fuses){
+    const l=lit[f.y][f.x]; if(f.got||l<=0.05) continue;
+    circle(ox+(f.x+0.5)*ts,oy+(f.y+0.5)*ts,ts*(0.1+0.03*Math.sin(t*12)),`rgba(255,210,80,${l})`);
+  }
+  for(const p of projectiles) circle(ox+p.x*ts,oy+p.y*ts,ts*0.07,p.kind==='stone'?'#999':'#c9a227');
+  for(const toy of toys) circle(ox+toy.x*ts,oy+toy.y*ts,ts*0.1,`rgba(201,162,39,${0.4+0.4*Math.sin(t*20)})`);
+  if(tw.note && !tw.note.read){
+    const l=lit[tw.note.y][tw.note.x];
+    if(l>0.05){ g.fillStyle=`rgba(230,220,190,${l})`; g.save(); g.translate(ox+(tw.note.x+0.5)*ts,oy+(tw.note.y+0.5)*ts); g.rotate(0.3); g.fillRect(-ts*0.15,-ts*0.2,ts*0.3,ts*0.4); g.restore(); }
+  }
+  if(tw.body){
+    const l=lit[tw.body.y][tw.body.x];
+    if(l>0.05){
+      const tw2=Math.random()<0.03?(Math.random()-0.5)*ts*0.15:0;   // it moves, sometimes
+      g.fillStyle=`rgba(220,220,220,${l*0.6})`; g.beginPath(); g.ellipse(ox+(tw.body.x+0.5)*ts+tw2,oy+(tw.body.y+0.5)*ts,ts*0.22,ts*0.12,0.4,0,7); g.fill();
+    }
+  }
+  // traps show only as a faint stain when the echo passes over them
+  for(const tr of traps){
+    const l=lit[tr.y][tr.x]; if(tr.used||l<=0.05) continue;
+    g.fillStyle=`rgba(140,20,20,${l*0.35})`; g.beginPath(); g.arc(ox+(tr.x+0.5)*ts,oy+(tr.y+0.5)*ts,ts*0.28,0,7); g.fill();
+  }
+  for(const p of pulses){
+    g.strokeStyle=`rgba(180,200,220,${0.25*(1-p.r/p.max)})`; g.lineWidth=2;
+    g.beginPath(); g.arc(ox+p.x*ts,oy+p.y*ts,p.r*ts,0,7); g.stroke();
+  }
+  for(const m of monsters){
+    if(m.seen<=0.02) continue;
+    g.save(); g.globalAlpha=m.seen; MONSTER_SKINS[stats.skin[m.kind]](ox+m.x*ts,oy+m.y*ts,ts); g.restore();
+  }
+  PLAYER_SKINS[stats.skin.player](W/2,H/2,ts);
+  if(breath.held){ g.strokeStyle='rgba(150,190,255,0.5)'; g.lineWidth=2; g.beginPath(); g.arc(W/2,H/2,ts*0.3,-Math.PI/2,-Math.PI/2+Math.PI*2*breath.left/5); g.stroke(); }
+  g.restore();
+  // tools and task, top-left
+  g.fillStyle='#777'; g.font='15px Georgia';
+  let hud=`камни ${items.stones}`+(items.toy?` · игрушка ${items.toy}`:'')+`   дыхание ${'▮'.repeat(Math.ceil(breath.left))}${'▯'.repeat(5-Math.ceil(breath.left))}`;
+  if(task && task.kind==='power') hud+=`   предохранители ${task.fuses.filter(f=>f.got).length}/3`;
+  if(task && task.kind==='once') hud+=`   звуков: ${task.used}/1`;
+  g.fillText(hud,20,isTouch?80:30);
+  g.fillStyle='#222'; g.fillRect(20,H-30,160,8);
+  g.fillStyle=loud>0.3?'#c33':'#777'; g.fillRect(20,H-30,160*loud,8);
+  g.fillStyle='#555'; g.font='12px monospace';
+  if(settings.debug) g.fillText(`mic ${lastRms.toFixed(4)}  порог ${floor.toFixed(4)}  чувств. ${sens.toFixed(1)}  (+/-)   Esc — меню`,20,H-38);
+  if(!settings.flashes) flash=0;
+  if(flash>0){ g.fillStyle=`rgba(255,255,255,${flash})`; g.fillRect(0,0,W,H); flash=Math.max(0,flash-0.08); }
+}
+
+// ---------- skins ----------
+const circle=(x,y,r,c)=>{ g.fillStyle=c; g.beginPath(); g.arc(x,y,r,0,7); g.fill(); };
+const MONSTER_SKINS={
+  m_shadow:(x,y,s)=>{ g.fillStyle='#140000'; g.beginPath(); g.ellipse(x,y,s*0.35,s*0.5,0,0,7); g.fill();
+    for(const k of [-1,1]) circle(x+k*s*0.12,y-s*0.15,s*0.05,'#ff281e'); },
+  m_ghost:(x,y,s)=>{ g.fillStyle='rgba(220,230,240,0.85)'; g.beginPath(); g.arc(x,y-s*0.1,s*0.32,Math.PI,0);
+    for(let i=0;i<=4;i++) g.lineTo(x+s*0.32-i*s*0.16,y+s*0.4+(i%2?-s*0.1:0)); g.fill();
+    for(const k of [-1,1]) circle(x+k*s*0.11,y-s*0.12,s*0.06,'#000'); circle(x,y+s*0.08,s*0.05,'#000'); },
+  m_mask:(x,y,s)=>{ g.fillStyle='#0a0a0a'; g.fillRect(x-s*0.3,y-s*0.1,s*0.6,s*0.6);
+    g.fillStyle='#e8e4dc'; g.beginPath(); g.ellipse(x,y-s*0.15,s*0.22,s*0.3,0,0,7); g.fill(); },
+  m_spider:(x,y,s)=>{ g.strokeStyle='#2a1a10'; g.lineWidth=s*0.05;
+    for(let i=0;i<8;i++){ const a=i/8*7+t*3%0.4; g.beginPath(); g.moveTo(x,y); g.lineTo(x+Math.cos(a)*s*0.3,y+Math.sin(a)*s*0.3-s*0.15); g.lineTo(x+Math.cos(a)*s*0.55,y+Math.sin(a)*s*0.55); g.stroke(); }
+    circle(x,y,s*0.2,'#1a0c06'); for(let i=0;i<4;i++) circle(x-s*0.09+i*s*0.06,y-s*0.07,s*0.025,'#f33'); },
+  m_eye:(x,y,s)=>{ g.fillStyle='#ece4d4'; g.beginPath(); g.ellipse(x,y,s*0.45,s*0.28,0,0,7); g.fill();
+    circle(x+Math.sin(t*2)*s*0.12,y,s*0.17,'#7a0b0b'); circle(x+Math.sin(t*2)*s*0.12,y,s*0.07,'#000'); },
+  m_doll:(x,y,s)=>{ g.fillStyle='#3a1020'; g.beginPath(); g.moveTo(x-s*0.3,y+s*0.5); g.lineTo(x,y-s*0.05); g.lineTo(x+s*0.3,y+s*0.5); g.fill();
+    circle(x,y-s*0.2,s*0.2,'#f2ece6'); for(const k of [-1,1]) circle(x+k*s*0.07,y-s*0.22,s*0.04,'#123');
+    circle(x,y-s*0.1,s*0.025,'#a00'); },
+  m_maw:(x,y,s)=>{ circle(x,y,s*0.42,'#2a0000'); g.fillStyle='#ddd';
+    for(let i=0;i<12;i++){ const a=i/12*7; g.beginPath(); g.moveTo(x+Math.cos(a)*s*0.42,y+Math.sin(a)*s*0.42); g.lineTo(x+Math.cos(a+0.2)*s*0.42,y+Math.sin(a+0.2)*s*0.42); g.lineTo(x+Math.cos(a+0.1)*s*0.22,y+Math.sin(a+0.1)*s*0.22); g.fill(); }
+    circle(x,y,s*0.12,'#000'); },
+  // statues
+  st_stone:(x,y,s)=>{ g.fillStyle='#7d7d78'; g.beginPath(); g.moveTo(x-s*0.3,y+s*0.5); g.quadraticCurveTo(x-s*0.32,y-s*0.3,x,y-s*0.45); g.quadraticCurveTo(x+s*0.32,y-s*0.3,x+s*0.3,y+s*0.5); g.fill();
+    g.fillStyle='#2a2a28'; g.beginPath(); g.ellipse(x,y-s*0.18,s*0.13,s*0.15,0,0,7); g.fill(); },
+  st_mannequin:(x,y,s)=>{ g.fillStyle='#d9c6a8'; g.beginPath(); g.ellipse(x,y-s*0.3,s*0.13,s*0.16,0,0,7); g.fill();
+    g.fillRect(x-s*0.15,y-s*0.12,s*0.3,s*0.4); g.fillRect(x-s*0.13,y+s*0.28,s*0.08,s*0.25); g.fillRect(x+s*0.05,y+s*0.28,s*0.08,s*0.25);
+    g.strokeStyle='#8a7a60'; g.lineWidth=1; g.beginPath(); g.moveTo(x-s*0.15,y+s*0.05); g.lineTo(x+s*0.15,y+s*0.05); g.stroke(); },
+  st_gargoyle:(x,y,s)=>{ g.fillStyle='#55554f';
+    for(const k of [-1,1]){ g.beginPath(); g.moveTo(x,y-s*0.05); g.lineTo(x+k*s*0.5,y-s*0.35); g.lineTo(x+k*s*0.38,y+s*0.05); g.lineTo(x+k*s*0.45,y+s*0.15); g.fill(); }
+    circle(x,y,s*0.2,'#5f5f58'); circle(x,y-s*0.22,s*0.13,'#5f5f58');
+    for(const k of [-1,1]){ g.beginPath(); g.moveTo(x+k*s*0.07,y-s*0.3); g.lineTo(x+k*s*0.13,y-s*0.45); g.lineTo(x+k*s*0.11,y-s*0.28); g.fill(); circle(x+k*s*0.05,y-s*0.22,s*0.025,'#d33'); } },
+  st_angel:(x,y,s)=>{
+    g.strokeStyle='#d9b44a'; g.lineWidth=s*0.03; g.beginPath(); g.ellipse(x,y-s*0.5,s*0.14,s*0.04,0,0,7); g.stroke();
+    g.fillStyle='#e8e6e0';
+    for(const k of [-1,1]){ g.beginPath(); g.moveTo(x,y-s*0.15); g.quadraticCurveTo(x+k*s*0.6,y-s*0.5,x+k*s*0.45,y+s*0.3); g.lineTo(x+k*s*0.1,y+s*0.1); g.fill(); }
+    g.beginPath(); g.moveTo(x-s*0.18,y+s*0.5); g.lineTo(x-s*0.1,y-s*0.2); g.lineTo(x+s*0.1,y-s*0.2); g.lineTo(x+s*0.18,y+s*0.5); g.fill();
+    circle(x,y-s*0.3,s*0.12,'#f0eee8'); g.fillStyle='#cfcac0'; g.fillRect(x-s*0.13,y-s*0.34,s*0.26,s*0.08);   // hands over the eyes
+  },
+  // crawlers
+  cr_bones:(x,y,s)=>{ g.strokeStyle='#cfc6b2'; g.lineWidth=s*0.035; g.lineCap='round';
+    for(let i=0;i<6;i++){ const a=(i<3?Math.PI:0)+(i%3-1)*0.5, w=Math.sin(t*14+i)*0.15;
+      g.beginPath(); g.moveTo(x,y); g.lineTo(x+Math.cos(a+w)*s*0.28,y+Math.sin(a+w)*s*0.28-s*0.12); g.lineTo(x+Math.cos(a+w)*s*0.48,y+Math.sin(a+w)*s*0.48+s*0.05); g.stroke(); }
+    g.fillStyle='#cfc6b2'; g.beginPath(); g.ellipse(x,y,s*0.14,s*0.09,0,0,7); g.fill(); circle(x,y-s*0.12,s*0.07,'#cfc6b2');
+    for(const k of [-1,1]) circle(x+k*s*0.025,y-s*0.13,s*0.018,'#000'); },
+  cr_centipede:(x,y,s)=>{ g.strokeStyle='#3a1a0a'; g.lineWidth=s*0.025;
+    for(let i=0;i<7;i++){ const sx=x+Math.sin(t*6+i*0.8)*s*0.08, sy=y-s*0.42+i*s*0.13;
+      for(const k of [-1,1]){ g.beginPath(); g.moveTo(sx,sy); g.lineTo(sx+k*s*0.2,sy+Math.sin(t*20+i)*s*0.05); g.stroke(); }
+      circle(sx,sy,s*0.075,i===0?'#5a1a0a':'#4a2410'); }
+    for(const k of [-1,1]) circle(x+Math.sin(t*6)*s*0.08+k*s*0.03,y-s*0.44,s*0.015,'#ff5'); },
+  cr_hand:(x,y,s)=>{ g.fillStyle='#c4b6a0';
+    g.beginPath(); g.ellipse(x,y-s*0.05,s*0.2,s*0.17,0,0,7); g.fill();
+    for(let f=0;f<5;f++){ const a=Math.PI*0.15+f*Math.PI*0.17, w=Math.sin(t*12+f)*0.12;
+      g.save(); g.translate(x+Math.cos(a)*s*0.17,y+Math.sin(a)*s*0.12); g.rotate(a-Math.PI/2+w);
+      g.fillRect(-s*0.035,0,s*0.07,s*(f===0?0.2:0.3)); g.restore(); }
+    g.fillStyle='rgba(110,0,0,0.6)'; g.fillRect(x-s*0.08,y-s*0.3,s*0.16,s*0.12); },
+  // repeaters
+  rp_drip:(x,y,s)=>{ g.fillStyle='#050608'; g.beginPath(); g.moveTo(x,y-s*0.5); g.quadraticCurveTo(x+s*0.35,y,x,y+s*0.35); g.quadraticCurveTo(x-s*0.35,y,x,y-s*0.5); g.fill();
+    for(let i=0;i<3;i++){ const dy=((t*0.8+i/3)%1)*s*0.4; circle(x+(i-1)*s*0.1,y+s*0.3+dy,s*0.03,'#0b0e14'); }
+    g.strokeStyle='#8aa'; g.lineWidth=1.5; g.beginPath(); g.arc(x,y+s*0.05,s*0.08,0.2,Math.PI-0.2); g.stroke(); },
+  rp_radio:(x,y,s)=>{ g.fillStyle='#4a3020'; g.fillRect(x-s*0.32,y-s*0.22,s*0.64,s*0.44);
+    g.fillStyle='#1a1410'; g.beginPath(); g.arc(x-s*0.12,y,s*0.14,0,7); g.fill();
+    g.fillStyle='#d9b44a'; g.fillRect(x+s*0.04,y-s*0.12,s*0.22,s*0.08);
+    g.strokeStyle='#aaa'; g.lineWidth=1.5; g.beginPath(); g.moveTo(x+s*0.2,y-s*0.22); g.lineTo(x+s*0.35,y-s*0.5); g.stroke();
+    for(const k of [-1,1]) circle(x-s*0.12+k*s*0.05,y-s*0.03,s*0.02,'#f33');
+    g.fillStyle='#000'; g.fillRect(x-s*0.18,y+s*0.06,s*0.12,s*0.02+Math.abs(Math.sin(t*15))*s*0.04); },
+  rp_mouths:(x,y,s)=>{ circle(x,y,s*0.38,'#3a1418');
+    for(let i=0;i<5;i++){ const a=i/5*Math.PI*2+t*0.5, mx=x+Math.cos(a)*s*0.2, my=y+Math.sin(a)*s*0.2, o=Math.abs(Math.sin(t*5+i))*s*0.06;
+      g.fillStyle='#000'; g.beginPath(); g.ellipse(mx,my,s*0.07,s*0.01+o,0,0,7); g.fill();
+      g.fillStyle='#ddd'; g.fillRect(mx-s*0.05,my-s*0.01-o,s*0.1,s*0.015); } },
+  m_king:(x,y,s)=>{ g.fillStyle='#050505'; g.beginPath(); g.moveTo(x-s*0.4,y+s*0.55); g.quadraticCurveTo(x,y-s*0.6,x+s*0.4,y+s*0.55); g.fill();
+    g.fillStyle='#c9a227'; g.beginPath(); g.moveTo(x-s*0.2,y-s*0.25);
+    for(let i=0;i<=4;i++) g.lineTo(x-s*0.2+i*s*0.1,y-s*(i%2?0.32:0.48)); g.lineTo(x+s*0.2,y-s*0.25); g.fill();
+    for(const k of [-1,1]) circle(x+k*s*0.09,y-s*0.08,s*0.045,`hsl(${t*60%360},90%,60%)`); },
+};
+const PLAYER_SKINS={
+  p_dot:(x,y,s)=>circle(x,y,s*0.15,'#ddd'),
+  p_candle:(x,y,s)=>{ g.fillStyle='#e8dcc0'; g.fillRect(x-s*0.07,y-s*0.05,s*0.14,s*0.3);
+    g.fillStyle='#ffb43c'; g.beginPath(); g.ellipse(x+Math.sin(t*13)*s*0.02,y-s*0.13,s*0.05,s*0.1,0,0,7); g.fill(); },
+  p_firefly:(x,y,s)=>{ const gr=g.createRadialGradient(x,y,0,x,y,s*0.5); gr.addColorStop(0,`rgba(190,255,120,${0.5+Math.sin(t*4)*0.2})`); gr.addColorStop(1,'rgba(190,255,120,0)');
+    g.fillStyle=gr; g.fillRect(x-s*0.5,y-s*0.5,s,s); circle(x,y,s*0.08,'#efffd0'); },
+  p_cat:(x,y,s)=>{ g.fillStyle='#cfcfcf'; g.beginPath(); g.moveTo(x-s*0.16,y-s*0.02); g.lineTo(x-s*0.12,y-s*0.24); g.lineTo(x-s*0.02,y-s*0.1);
+    g.lineTo(x+s*0.02,y-s*0.1); g.lineTo(x+s*0.12,y-s*0.24); g.lineTo(x+s*0.16,y-s*0.02); g.fill(); circle(x,y,s*0.15,'#cfcfcf');
+    for(const k of [-1,1]) circle(x+k*s*0.06,y-s*0.02,s*0.025,'#3c3'); },
+  p_skull:(x,y,s)=>{ circle(x,y-s*0.03,s*0.16,'#e6e0d2'); g.fillRect(x-s*0.08,y+s*0.06,s*0.16,s*0.08);
+    for(const k of [-1,1]) circle(x+k*s*0.06,y-s*0.04,s*0.045,'#000'); },
+  p_lantern:(x,y,s)=>{ const gr=g.createRadialGradient(x,y,0,x,y,s*1.2); gr.addColorStop(0,'rgba(255,200,110,0.35)'); gr.addColorStop(1,'rgba(255,200,110,0)');
+    g.fillStyle=gr; g.fillRect(x-s*1.2,y-s*1.2,s*2.4,s*2.4);
+    g.strokeStyle='#8a6a3a'; g.lineWidth=s*0.03; g.strokeRect(x-s*0.1,y-s*0.12,s*0.2,s*0.26); circle(x,y,s*0.07,'#ffd27a'); },
+  p_prism:(x,y,s)=>{ for(let i=0;i<6;i++){ const a=t*1.5+i/6*Math.PI*2; circle(x+Math.cos(a)*s*0.12,y+Math.sin(a)*s*0.12,s*0.07,`hsla(${i*60+t*90},90%,65%,0.8)`); }
+    circle(x,y,s*0.08,'#fff'); },
+};
+
+// Game-time scheduler: everything delayed inside a level goes through later(), so it
+// stops with the pause and is dropped when the level is left or restarted.
+let clock=0, timers=[], rafId=0, paused=false;
+function later(sec,fn){ timers.push({at:clock+sec,fn}); }
+function clearTimers(){ timers=[]; }
+function runTimers(){
+  const due=timers.filter(x=>x.at<=clock);
+  if(!due.length) return;
+  timers=timers.filter(x=>x.at>clock);
+  for(const x of due) x.fn();
+}
+function startLoop(){ cancelAnimationFrame(rafId); running=true; last=performance.now(); rafId=requestAnimationFrame(frame); }
+
+function frame(nowMs){
+  if(!running) return;
+  const dt=Math.min(0.05,(nowMs-last)/1000||0); last=nowMs;
+  clock+=dt;
+  if(!tw.frozen){ update(dt); draw(); }
+  runTimers();
+  if(running) rafId=requestAnimationFrame(frame);
+}
+
+function pauseGame(){
+  if(!running || paused) return;
+  paused=true; running=false; keys={};
+  cancelAnimationFrame(rafId);
+  if(ac) ac.suspend();
+  document.getElementById('crash').classList.add('hidden');
+  showScreen('pause');
+}
+function resumeGame(){
+  if(!paused) return;
+  paused=false; keys={};
+  showScreen(null);
+  if(tw.frozen) document.getElementById('crash').classList.remove('hidden');
+  if(ac) ac.resume();
+  startLoop();
+}
+function quitLevel(){
+  paused=false; running=false; clearTimers(); cancelAnimationFrame(rafId);
+  document.getElementById('crash').classList.add('hidden');
+  if(ac) ac.resume();
+  if(master) master.gain.value=settings.volume;
+  showScreen('menu');
+}
+document.getElementById('pResume').onclick=resumeGame;
+document.getElementById('pQuit').onclick=quitLevel;
+document.addEventListener('visibilitychange',()=>{ if(document.hidden) pauseGame(); });
+addEventListener('blur',()=>{ keys={}; pauseGame(); });
+
+// ---------- flow ----------
+const SCREENS=['start','calib','menu','select','settings','achievements','between','end','reward','shop','pause','records'];
+function showScreen(id){ for(const s of SCREENS) document.getElementById(s).classList.toggle('hidden',s!==id); if(id==='menu') renderMenu();
+  // touch controls exist only while a level is on screen, so they never cover menus
+  if(isTouch) document.getElementById('touchUI').classList.toggle('hidden',id!==null); }
+
+let levelStartT=0;
+function enterLevel(title,text,label){
+  const num=levelNum(), ch=chapterFor(num,abyss);
+  room=ROOMS[ch.room];
+  buildLevel(cfg);
+  lt=0; dead=false; pulses=[]; ev={}; fearUntil=0; faceUntil=0; flash=0; levelPulses=0; levelTraps=0;
+  breath={left:5,held:false,heldFor:0}; clipFrames=[]; pathDistAt=-1; levelStartT=t;
+  lastPulse=-99;   // game time restarts from 0 on a new run; a stale value would mute the mic until t caught up
+  droneOsc.forEach((o,i)=>o.frequency.value=room.drone+i*2.5);
+  const say=applyTwists();
+  // the first level of a chapter introduces its place
+  if(!abyss && (num-1)%10===0) text=`Глава ${(num-1)/10+1}. ${ch.name}. Здесь ${room.name}.`;
+  label+=` · ${ch.name.toUpperCase()}`;
+  document.getElementById('lvl').textContent=label;
+  document.getElementById('betweenTitle').textContent=title;
+  document.getElementById('betweenText').textContent=say||text;
+  clearTimers(); paused=false; keys={}; deafUntil=0;
+  showScreen('between'); running=false; cancelAnimationFrame(rafId);
+  const run=++enterLevel.run;
+  setTimeout(()=>{ if(run!==enterLevel.run || !document.getElementById('pause').classList.contains('hidden')) return;
+    if(document.getElementById('between').classList.contains('hidden')) return;   // left to the menu meanwhile
+    showScreen(null); startLoop(); },2200);
+}
+enterLevel.run=0;
+function startLevel(n){
+  abyss=0; level=n; cfg=LEVELS[n];
+  enterLevel(cfg.trial?`${n+1} · ИСПЫТАНИЕ`:`${n+1}`,
+    n===LEVEL_COUNT-1 ? 'Последний.' : cfg.trial ? 'Их больше. Они быстрее. Награда втрое.' : PHRASES[n%PHRASES.length],
+    `УРОВЕНЬ ${n+1} / ${LEVEL_COUNT}${cfg.trial?' · ИСПЫТАНИЕ':''}`);
+}
+function startAbyss(d){
+  abyss=d; cfg=abyssCfg(d); ach('abyss');
+  enterLevel(cfg.trial?`БЕЗДНА ${d} · ИСПЫТАНИЕ`:`БЕЗДНА ${d}`, d===1?'Отсюда нет выхода, только вниз.':cfg.trial?'Оно ждёт тебя здесь.':'Эхо слабеет.',
+    `БЕЗДНА ${d}`);
+}
+function resetRun(){ history=[]; marks=[]; t=0; }
+const levelNum=()=>abyss ? LEVEL_COUNT+abyss : level+1;
+
+let reward=0, rewardDoubled=false;
+function levelComplete(){
+  if(levelPulses<=3) ach('mute');
+  if(traps.length>=5 && levelTraps===0) ach('careful');
+  if(lt<30 && (abyss || level>=4)) ach('runner');
+  if(cfg.trial) ach('trial');
+  stats.calm = levelScares ? 0 : stats.calm+1;
+  endProfile();
+  // records: quietest and fastest clear (only levels 5+ count, quietest needs 20 s in the level)
+  const num=levelNum(), R=stats.records, hs=history.filter(h=>h.t>=levelStartT);
+  const avg=hs.reduce((a,h)=>a+h.v,0)/Math.max(1,hs.length);
+  if(num>=5 && lt>=20 && (!R.quietest || avg<R.quietest.v)) R.quietest={v:avg,num,abyss:abyss};
+  if(num>=5 && (!R.fastest || lt<R.fastest.v)) R.fastest={v:lt,num,abyss:abyss};
+  R.levels++;
+  const first = abyss ? abyss>stats.abyssBest : level+1===LEVEL_COUNT ? !stats.abyss : level+1>=loadUnlocked();
+  reward=levelReward(levelNum(), cfg.trial, first); rewardDoubled=false;
+  addCoins(reward);
+  if(abyss){
+    stats.abyssBest=Math.max(stats.abyssBest,abyss); saveStats(); submitScore();
+    if(abyss>=10) ach('abyss10');
+    if(abyss>=25) ach('abyss25');
+    return;
+  }
+  const done=level+1;
+  if(done>=1) ach('lvl1');
+  if(done>=10) ach('lvl10');
+  if(done>=25) ach('lvl25');
+  if(done>=50) ach('lvl50');
+  if(done>=LEVEL_COUNT){ ach('lvl100'); stats.abyss=true; saveStats(); }
+}
+// the reward screen between levels; the ad bonus adds the extra half on top of what was already paid
+function nextLevel(){
+  running=false;
+  document.getElementById('rewardTitle').textContent = cfg.trial ? 'ИСПЫТАНИЕ ПРОЙДЕНО' : 'ВЫХОД';
+  document.getElementById('rewardText').textContent = `Уровень ${levelNum()} · +${reward} монет · всего ${stats.coins}`;
+  const ad=document.getElementById('rewardAd');
+  ad.disabled=false; ad.textContent=`Реклама: ×1.5 (+${Math.ceil(reward*0.5)})`;
+  ad.style.display=Ads.available()?'':'none';
+  showScreen('reward');
+}
+document.getElementById('rewardAd').onclick=async()=>{
+  const ad=document.getElementById('rewardAd'); if(rewardDoubled) return;
+  ad.disabled=true;
+  if(await Ads.rewarded()){
+    rewardDoubled=true; const extra=Math.ceil(reward*0.5); addCoins(extra);
+    document.getElementById('rewardText').textContent = `Уровень ${levelNum()} · +${reward+extra} монет · всего ${stats.coins}`;
+    ad.textContent='Бонус получен';
+  }
+};
+document.getElementById('rewardNext').onclick=async()=>{ await maybeInterstitial(); advance(); };
+document.getElementById('rewardMenu').onclick=()=>{ if(!abyss) saveUnlocked(level+2); showScreen('menu'); };
+function advance(){
+  if(abyss){ startAbyss(abyss+1); return; }
+  saveUnlocked(level+2);
+  if(level+1>=LEVEL_COUNT){ finish(true); return; }
+  startLevel(level+1);
+}
+
+function finish(won){
+  running=false;
+  showScreen('end');
+  document.getElementById('retry').style.display = won ? 'none' : '';
+  if(won) document.getElementById('replayBox').classList.add('hidden'); else showReplay();
+  document.getElementById('endTitle').textContent = won ? 'ТЫ ВЫБРАЛСЯ' : 'ОНО ТЕБЯ УСЛЫШАЛО';
+  const peak=history.reduce((a,b)=>b.v>a.v?b:a,{v:0,t:0});
+  const where = won ? `Все ${LEVEL_COUNT} лабиринтов пройдены. Открыта Бездна. `
+    : abyss ? `Бездна ${abyss} (рекорд ${stats.abyssBest}). ` : `Уровень ${level+1}. `;
+  document.getElementById('endText').textContent = where+
+    `Время: ${Math.floor(t/60)}:${String(Math.floor(t%60)).padStart(2,'0')}. Твоя громкость за всю игру:`;
+  const gc=document.getElementById('graph'), x=gc.getContext('2d');
+  gc.width=gc.clientWidth*2; gc.height=gc.clientHeight*2;
+  const T=Math.max(1,t), w=gc.width, h=gc.height-40;
+  x.clearRect(0,0,w,gc.height);
+  x.strokeStyle='#888'; x.lineWidth=2; x.beginPath();
+  history.forEach((p,i)=>{ const px=p.t/T*w, py=h-p.v*(h-20); i?x.lineTo(px,py):x.moveTo(px,py); });
+  x.stroke();
+  x.font='20px Georgia'; x.fillStyle='#c44';
+  marks.forEach((m,i)=>{ const px=m.t/T*w; x.fillRect(px,0,2,h); x.fillText(m.label,Math.min(px+4,w-140),26+(i%4)*22); });
+  if(peak.v>0.2){ const px=peak.t/T*w, py=h-peak.v*(h-20); x.fillStyle='#fff'; x.beginPath(); x.arc(px,py,6,0,7); x.fill(); x.fillText('здесь ты закричал',Math.min(px+10,w-220),Math.max(py,80)); }
+}
+document.getElementById('retry').onclick=async()=>{ await maybeInterstitial(); resetRun(); abyss ? startAbyss(abyss) : startLevel(level); };
+document.getElementById('toMenu').onclick=()=>showScreen('menu');
+
+// ---------- menus ----------
+function renderMenu(){
+  const un=loadUnlocked();
+  document.getElementById('mContinue').textContent = stats.abyss ? `Продолжить · Бездна ${stats.abyssBest+1}`
+    : un>1 ? `Продолжить · уровень ${un}` : 'Начать';
+  const ab=document.getElementById('mAbyss');
+  ab.disabled=!stats.abyss;
+  ab.textContent = stats.abyss ? `Бездна · рекорд ${stats.abyssBest}` : `Бездна · пройди ${LEVEL_COUNT} уровней`;
+  document.getElementById('mAch').textContent=`Достижения · ${achGot.length} / ${ACH.length}`;
+  document.getElementById('coins').textContent=`◉ ${stats.coins}`;
+  checkDaily();
+  // once in a while the menu says what it really thinks
+  if(un>5 && Math.random()<0.12){
+    const b=document.getElementById('mContinue'), txt=b.textContent;
+    setTimeout(()=>{ b.textContent='Не продолжай'; b.style.color='#c33'; setTimeout(()=>{ b.textContent=txt; b.style.color=''; },900); },700+Math.random()*1500);
+  }
+}
+// leaving the tab doesn't mean you left
+document.addEventListener('visibilitychange',()=>{
+  if(document.hidden){ if(running || paused || stats.prof.levels>3) document.title='Я всё ещё здесь'; }
+  else setTimeout(()=>document.title='Тишина',1500);
+});
+document.getElementById('mContinue').onclick=()=>{ resetRun(); stats.abyss ? startAbyss(stats.abyssBest+1) : startLevel(loadUnlocked()-1); };
+document.getElementById('mShop').onclick=()=>showShop('face');
+document.getElementById('dailyOk').onclick=()=>{ document.getElementById('daily').classList.add('hidden'); renderMenu(); };
+
+// ---------- shop screen ----------
+let shopCat='face';
+function preview(canvas,item){
+  const c=canvas.getContext('2d'), w=canvas.width, h=canvas.height, sg=g, sw=W, sh=H;
+  g=c; W=w; H=h;
+  try{
+    c.fillStyle='#000'; c.fillRect(0,0,w,h);
+    if(item.cat==='face'){ c.save(); c.translate(w/2,h/2); FACES[item.face](Math.min(w,h)*0.95,1); c.restore(); }
+    else if(item.cat!=='player'){ for(let y=0;y<h;y+=h/4) for(let x=0;x<w;x+=w/4) if((x+y)/(w/4)%2===0){ c.fillStyle='#0d0f12'; c.fillRect(x,y,w/4,h/4); } MONSTER_SKINS[item.id](w/2,h/2,h*0.75); }
+    else PLAYER_SKINS[item.id](w/2,h/2,h*0.9);
+  } finally { g=sg; W=sw; H=sh; }
+}
+function showShop(cat){
+  shopCat=cat;
+  for(const b of document.querySelectorAll('#shopTabs button')) b.classList.toggle('on',b.dataset.cat===cat);
+  document.getElementById('shopCoins').textContent=`◉ ${stats.coins}`;
+  const adBtn=document.getElementById('shopAd'), wait=Math.max(0,stats.adAt+10*60*1000-Date.now());
+  adBtn.style.display=Ads.available()?'':'none';
+  adBtn.disabled=wait>0; adBtn.textContent = wait>0 ? `Реклама · через ${Math.ceil(wait/60000)} мин` : 'Реклама: +40 монет';
+  const grid=document.getElementById('shopGrid'); grid.innerHTML='';
+  for(const it of SHOP.filter(s=>s.cat===cat)){
+    const card=document.createElement('div'); card.className='card'+(it.legendary?' legend':'');
+    const cvs=document.createElement('canvas'); cvs.width=180; cvs.height=120; card.appendChild(cvs);
+    const name=document.createElement('b'); name.textContent=it.name+(it.legendary?' ★':''); card.appendChild(name);
+    const btn=document.createElement('button');
+    const has=owns(it.id), worn=cat!=='face' && stats.skin[cat]===it.id;
+    if(cat==='face') btn.textContent = has ? 'В игре' : `◉ ${it.price}`;
+    else btn.textContent = worn ? 'Надето' : has ? 'Надеть' : `◉ ${it.price}`;
+    btn.disabled = worn || (cat==='face'&&has) || (!has && stats.coins<it.price);
+    btn.onclick=()=>{
+      if(!owns(it.id)){
+        if(stats.coins<it.price) return;
+        stats.coins-=it.price; stats.owned.push(it.id); ach('buy'); if(it.legendary) ach('legend');
+      }
+      if(cat!=='face') stats.skin[cat]=it.id;
+      saveStats(); showShop(cat);
+    };
+    card.appendChild(btn); grid.appendChild(card);
+    preview(cvs,it);
+  }
+  // the free screamers aren't sold; say so instead of hiding them
+  if(cat==='face') document.getElementById('shopNote').textContent=`${FREE_FACES} скримеров есть сразу. Купленные добавляются в игру и выпадают случайно.`;
+  else document.getElementById('shopNote').textContent='';
+  showScreen('shop');
+}
+for(const b of document.querySelectorAll('#shopTabs button')) b.onclick=()=>showShop(b.dataset.cat);
+document.getElementById('shopAd').onclick=async()=>{
+  if(Date.now()<stats.adAt+10*60*1000) return;
+  if(await Ads.rewarded()){ stats.adAt=Date.now(); addCoins(40); }
+  showShop(shopCat);
+};
+document.getElementById('mLevels').onclick=()=>showSelect();
+document.getElementById('mAbyss').onclick=()=>{ resetRun(); startAbyss(1); };
+document.getElementById('mSettings').onclick=()=>showSettings();
+document.getElementById('mAch').onclick=()=>showAchievements();
+for(const b of document.querySelectorAll('.back')) b.onclick=()=>showScreen('menu');
+
+function showSelect(){
+  const un=loadUnlocked(), grid=document.getElementById('grid');
+  document.getElementById('selectInfo').textContent=`Открыто уровней: ${un} из ${LEVEL_COUNT}`;
+  grid.innerHTML='';
+  for(let i=0;i<LEVEL_COUNT;i++){
+    const b=document.createElement('button');
+    b.textContent=i+1; b.disabled=i>=un; if(i===un-1) b.className='next';
+    b.onclick=()=>{ resetRun(); startLevel(i); };
+    grid.appendChild(b);
+  }
+  showScreen('select');
+}
+
+function showSettings(){
+  // headphones=true maps the "Наушники" checkbox onto settings.output
+  const bind=(id,key,fmt,apply,headphones)=>{
+    const el=document.getElementById(id), lab=document.getElementById(id+'V');
+    if(headphones) el.checked=settings.output==='headphones';
+    else if(el.type==='checkbox') el.checked=settings[key]; else el.value=settings[key];
+    const upd=()=>{
+      settings[key]= headphones ? (el.checked?'headphones':'speakers') : el.type==='checkbox'?el.checked:parseFloat(el.value);
+      if(lab) lab.textContent=fmt(settings[key]); store.set('settings',settings); if(apply) apply(); };
+    el.oninput=upd; if(lab) lab.textContent=fmt(settings[key]);
+  };
+  bind('sVolume','volume',v=>Math.round(v*100)+'%',()=>{ if(master) master.gain.value=settings.volume; });
+  bind('sScare','scare',v=>Math.round(v*100)+'%');
+  bind('sSens','sens',v=>v.toFixed(1),()=>{ sens=settings.sens; });
+  bind('sFlashes','flashes');
+  bind('sScareFreq','scareFreq',v=>Math.round(v*100)+'%');
+  bind('sShake','shake',v=>Math.round(v*100)+'%');
+  bind('sHeadphones','output',null,null,true);
+  bind('sDebug','debug');
+  showScreen('settings');
+}
+document.getElementById('sRecalib').onclick=async()=>{ await calibrate(); showScreen('settings'); };
+document.getElementById('sReset').onclick=()=>{
+  if(!confirm('Стереть весь прогресс, достижения и рекорды?')) return;
+  try{ for(const k of Object.keys(localStorage)) if(k.startsWith('silence.')) localStorage.removeItem(k); }catch(e){}
+  location.reload();
+};
+
+function showAchievements(){
+  const list=document.getElementById('achList');
+  list.innerHTML='';
+  for(const a of ACH){
+    const got=achGot.includes(a.id), d=document.createElement('div');
+    d.className='ach'+(got?' got':'');
+    d.innerHTML=`<b>${got?a.title:'???'}</b><span>${a.desc}</span>`;
+    list.appendChild(d);
+  }
+  document.getElementById('achInfo').textContent=
+    `Открыто ${achGot.length} из ${ACH.length} · смертей: ${stats.deaths} · скримеров увидено: ${stats.faces.length} / ${FACES.length}`;
+  document.getElementById('notesInfo').textContent=`Записки: ${stats.notes.length} / ${NOTES.length}`;
+  document.getElementById('notesList').innerHTML=NOTES.map((n,i)=>
+    `<p class="${stats.notes.includes(i)?'':'locked'}">${i+1}. ${stats.notes.includes(i)?n:'… (уровень '+(2+i*4)+')'}</p>`).join('');
+  showScreen('achievements');
+}
+
+// ---------- mic test ----------
+// quiet → whisper → voice, with the echo radius drawn live so the player sees what each level does
+let calibAbort=false;
+async function calibrate(withTest=true){
+  showScreen('calib'); calibAbort=false;
+  const txt=document.getElementById('calibText'), cvm=document.getElementById('calibMeter'), cm=cvm.getContext('2d');
+  const skip=document.getElementById('calibSkip');
+  skip.style.display='none';
+  txt.textContent='Сиди тихо. Я слушаю твою комнату…';
+  const samples=[]; const st=performance.now();
+  while(performance.now()-st<2500){ samples.push(micRms()); await new Promise(r=>setTimeout(r,30)); }
+  samples.sort((a,b)=>a-b);
+  floor=samples[Math.floor(samples.length*0.9)]*1.3+0.001;   // ignore fan / room hum
+  if(samples[samples.length-1]===0) alert('Микрофон молчит (сигнал ровно 0). Проверь, какой микрофон выбран в настройках браузера и системы.');
+  if(!withTest) return;
+  skip.style.display='';
+  const steps=[['Прошепчи что-нибудь.',0.07,0.35],['Теперь скажи громко.',0.4,1.01]];
+  for(const [label,lo,hi] of steps){
+    txt.textContent=label;
+    let held=0;
+    await new Promise(res=>{
+      const tick=()=>{
+        if(calibAbort) return res();
+        const l=Math.max(0,Math.min(1,(micRms()-floor)/0.12*sens));
+        cm.fillStyle='#000'; cm.fillRect(0,0,cvm.width,cvm.height);
+        const r=(2+l*13)/15*cvm.height*0.48;
+        cm.strokeStyle=l>=lo?'#7c7':'#666'; cm.lineWidth=3; cm.beginPath(); cm.arc(cvm.width/2,cvm.height/2,Math.max(3,r),0,7); cm.stroke();
+        cm.fillStyle='#ddd'; cm.beginPath(); cm.arc(cvm.width/2,cvm.height/2,4,0,7); cm.fill();
+        cm.fillStyle='#777'; cm.font='14px Georgia'; cm.fillText('радиус эха',10,20);
+        held = l>=lo && l<hi ? held+1 : 0;
+        if(held>6) return res();
+        requestAnimationFrame(tick);
+      };
+      tick();
+    });
+    if(calibAbort) break;
+    txt.textContent='Хорошо.'; await new Promise(r=>setTimeout(r,600));
+  }
+  if(!calibAbort){ txt.textContent='Если шёпот не давал эха — подними чувствительность в настройках.'; await new Promise(r=>setTimeout(r,1500)); }
+}
+document.getElementById('calibSkip').onclick=()=>{ calibAbort=true; };
+
+// ---------- input: mouse ----------
+cv.addEventListener('mousedown',e=>{
+  if(!running) return;
+  const w=screenToWorld(e.clientX,e.clientY);
+  throwItem(e.button===2?'toy':'stone',w.x,w.y);
+});
+cv.addEventListener('contextmenu',e=>e.preventDefault());
+
+// ---------- input: touch ----------
+// left half: a virtual stick wherever the thumb lands; right half: swipe to throw a stone
+const touch={dx:0,dy:0,active:false,breath:false};
+const isTouch=matchMedia('(pointer: coarse)').matches;
+if(isTouch){
+  const stick=document.getElementById('stick'), knob=document.getElementById('knob');
+  let stickId=null, sx=0, sy=0, swipe=null, lastDir={x:1,y:0};
+  const zone=document.getElementById('touchZone');
+  zone.addEventListener('pointerdown',e=>{
+    if(e.clientX<innerWidth/2 && stickId===null){
+      stickId=e.pointerId; sx=e.clientX; sy=e.clientY; touch.active=true;
+      stick.style.left=(sx-60)+'px'; stick.style.top=(sy-60)+'px'; stick.classList.remove('hidden');
+    } else swipe={id:e.pointerId,x:e.clientX,y:e.clientY};
+    zone.setPointerCapture(e.pointerId);
+  });
+  zone.addEventListener('pointermove',e=>{
+    if(e.pointerId!==stickId) return;
+    let dx=e.clientX-sx, dy=e.clientY-sy; const l=Math.hypot(dx,dy), k=Math.min(1,l/50)/(l||1);
+    touch.dx=dx*k; touch.dy=dy*k;
+    if(l>10) lastDir={x:dx/l,y:dy/l};
+    knob.style.transform=`translate(${touch.dx*40}px,${touch.dy*40}px)`;
+  });
+  const up=e=>{
+    if(e.pointerId===stickId){ stickId=null; touch.dx=touch.dy=0; touch.active=false; stick.classList.add('hidden'); knob.style.transform=''; }
+    else if(swipe && e.pointerId===swipe.id){
+      const dx=e.clientX-swipe.x, dy=e.clientY-swipe.y, l=Math.hypot(dx,dy);
+      if(l>30 && running){ const tiles=Math.min(7,2+l/tileSize()*1.5); const w=screenToWorld(W/2+dx/l*tiles*tileSize(),H/2+dy/l*tiles*tileSize()); throwItem('stone',w.x,w.y); }
+      swipe=null;
+    }
+  };
+  zone.addEventListener('pointerup',up); zone.addEventListener('pointercancel',up);
+  const tb=document.getElementById('tBreath');
+  tb.addEventListener('pointerdown',e=>{ e.stopPropagation(); touch.breath=true; });
+  for(const ev2 of ['pointerup','pointercancel','pointerleave']) tb.addEventListener(ev2,()=>{ touch.breath=false; });
+  document.getElementById('tToy').addEventListener('pointerdown',e=>{
+    e.stopPropagation(); const ts=tileSize(); const w=screenToWorld(W/2+lastDir.x*4*ts,H/2+lastDir.y*4*ts); throwItem('toy',w.x,w.y); });
+  document.getElementById('tPause').addEventListener('pointerdown',e=>{ e.stopPropagation(); pauseGame(); });
+}
+
+// ---------- death replay & clip ----------
+// The last 5 s from above: your path, every sound you made, every monster's route. The clip is
+// rendered from that log (no microphone audio is ever recorded).
+const KIND_COLOR={hunter:'#e33',statue:'#aaa',crawler:'#e93',repeater:'#59e'};
+function drawReplayFrame(c,w,h,i,frames){
+  c.fillStyle='#050505'; c.fillRect(0,0,w,h);
+  const xs=frames.flatMap(f=>[f.px,...f.ms.map(m=>m[0])]), ys=frames.flatMap(f=>[f.py,...f.ms.map(m=>m[1])]);
+  const cx=(Math.min(...xs)+Math.max(...xs))/2, cy=(Math.min(...ys)+Math.max(...ys))/2;
+  const span=Math.max(8,Math.max(...xs)-Math.min(...xs)+4,(Math.max(...ys)-Math.min(...ys)+4)*w/(h-60));
+  const ts=w/span, ox=w/2-cx*ts, oy=(h-60)/2-cy*ts;
+  const [wr,wg,wb]=room.wall;
+  for(let y=0;y<MH;y++) for(let x=0;x<MW;x++) if(map[y][x]===1){ c.fillStyle=`rgba(${wr},${wg},${wb},0.18)`; c.fillRect(ox+x*ts,oy+y*ts,ts+0.5,ts+0.5); }
+  const f=frames[i];
+  for(const p of f.ps){ c.strokeStyle='rgba(180,200,220,0.5)'; c.lineWidth=2; c.beginPath(); c.arc(ox+p[0]*ts,oy+p[1]*ts,p[2]*ts,0,7); c.stroke(); }
+  // trails
+  c.strokeStyle='rgba(220,220,220,0.5)'; c.lineWidth=2; c.beginPath();
+  frames.slice(0,i+1).forEach((q,j)=>{ j?c.lineTo(ox+q.px*ts,oy+q.py*ts):c.moveTo(ox+q.px*ts,oy+q.py*ts); }); c.stroke();
+  f.ms.forEach((m,k)=>{
+    c.strokeStyle=KIND_COLOR[m[2]]+'88'; c.beginPath();
+    frames.slice(0,i+1).forEach((q,j)=>{ const mm=q.ms[k]; if(!mm) return; j?c.lineTo(ox+mm[0]*ts,oy+mm[1]*ts):c.moveTo(ox+mm[0]*ts,oy+mm[1]*ts); }); c.stroke();
+    c.fillStyle=KIND_COLOR[m[2]]; c.beginPath(); c.arc(ox+m[0]*ts,oy+m[1]*ts,Math.max(4,ts*0.3),0,7); c.fill();
+  });
+  c.fillStyle='#fff'; c.beginPath(); c.arc(ox+f.px*ts,oy+f.py*ts,Math.max(4,ts*0.25),0,7); c.fill();
+  // loudness strip
+  c.fillStyle='#111'; c.fillRect(0,h-60,w,60);
+  frames.forEach((q,j)=>{ const bh=q.loud*50; c.fillStyle=j<=i?(q.loud>0.3?'#c33':'#888'):'#333'; c.fillRect(j/frames.length*w,h-5-bh,w/frames.length-1,bh); });
+  c.fillStyle='#777'; c.font='14px Georgia'; c.fillText('Последние 5 секунд · ТИШИНА',10,20);
+}
+let replayRaf=0;
+function showReplay(){
+  const box=document.getElementById('replayBox'), rc=document.getElementById('replay');
+  cancelAnimationFrame(replayRaf);
+  if(clipFrames.length<5){ box.classList.add('hidden'); return; }
+  box.classList.remove('hidden');
+  const frames=clipFrames.slice(), c=rc.getContext('2d'); rc.width=640; rc.height=400;
+  let i=0, acc=0, prev=performance.now();
+  const loop=now=>{ acc+=now-prev; prev=now; if(acc>66){ acc=0; i=(i+1)%frames.length; } drawReplayFrame(c,rc.width,rc.height,i,frames); replayRaf=requestAnimationFrame(loop); };
+  replayRaf=requestAnimationFrame(loop);
+  document.getElementById('clipBtn').onclick=()=>downloadClip(frames);
+}
+async function downloadClip(frames){
+  const btn=document.getElementById('clipBtn');
+  if(typeof MediaRecorder==='undefined'){ btn.textContent='Браузер не умеет записывать видео'; return; }
+  btn.disabled=true; btn.textContent='Записываю…';
+  const oc=document.createElement('canvas'); oc.width=640; oc.height=400;
+  const c=oc.getContext('2d'), streamV=oc.captureStream(30);
+  const type=['video/webm;codecs=vp9','video/webm','video/mp4'].find(x=>MediaRecorder.isTypeSupported(x))||'';
+  const rec=new MediaRecorder(streamV,type?{mimeType:type}:{}), chunks=[];
+  rec.ondataavailable=e=>chunks.push(e.data);
+  const done=new Promise(r=>rec.onstop=r);
+  rec.start();
+  for(let i=0;i<frames.length;i++){ drawReplayFrame(c,640,400,i,frames); await new Promise(r=>setTimeout(r,66)); }
+  await new Promise(r=>setTimeout(r,300)); rec.stop(); await done;
+  const blob=new Blob(chunks,{type:type||'video/webm'}), a=document.createElement('a');
+  a.href=URL.createObjectURL(blob); a.download=`silence-${Date.now()}.${(type||'webm').includes('mp4')?'mp4':'webm'}`; a.click();
+  btn.disabled=false; btn.textContent='Скачать клип';
+}
+
+// ---------- records ----------
+function showRecords(){
+  const R=stats.records, rows=[
+    ['Кампания', stats.abyss?'пройдена':`уровень ${loadUnlocked()} из ${LEVEL_COUNT}`],
+    ['Бездна, глубже всего', stats.abyssBest?`Бездна ${stats.abyssBest}`:'—'],
+    ['Самый тихий проход', R.quietest?`${Math.round(R.quietest.v*100)}% громкости · ${R.quietest.abyss?'Бездна '+R.quietest.abyss:'уровень '+R.quietest.num}`:'—'],
+    ['Самый быстрый проход', R.fastest?`${R.fastest.v.toFixed(1)} с · ${R.fastest.abyss?'Бездна '+R.fastest.abyss:'уровень '+R.fastest.num}`:'—'],
+    ['Пройдено уровней', R.levels],
+    ['Смертей', stats.deaths],
+  ];
+  document.getElementById('recList').innerHTML=rows.map(r=>`<div class="row"><span style="text-align:left;color:#bbb">${r[0]}</span><span>${r[1]}</span></div>`).join('');
+  const online=document.getElementById('recOnline');
+  online.textContent = lb ? 'Загружаю таблицу игроков…' : platform==='vk' ? '' : 'Таблица игроков есть в версиях для площадок.';
+  const vkb=document.getElementById('recVK');
+  vkb.style.display = platform==='vk' ? '' : 'none';
+  vkb.onclick=()=>vkBridge.send('VKWebAppShowLeaderBoardBox',{user_result:stats.abyssBest}).catch(()=>{});
+  if(lb) lb.getLeaderboardEntries('abyss',{quantityTop:10,includeUser:true}).then(r=>{
+    online.innerHTML='<b>Глубже всех в Бездне</b><br>'+r.entries.map(e=>`${e.rank}. ${e.player.publicName||'Аноним'} — ${e.score}`).join('<br>');
+  }).catch(()=>{ online.textContent='Таблица игроков недоступна.'; });
+  showScreen('records');
+}
+document.getElementById('mRecords').onclick=()=>showRecords();
+document.getElementById('replaySkip').onclick=()=>{ cancelAnimationFrame(replayRaf); document.getElementById('replayBox').classList.add('hidden'); };
+window.onAndroidBack=()=>{
+  if(running){ pauseGame(); return true; }
+  if(paused){ resumeGame(); return true; }
+  if(document.getElementById('menu').classList.contains('hidden') && document.getElementById('start').classList.contains('hidden')){ showScreen('menu'); return true; }
+  return false;
+};
+
+document.getElementById('go').onclick=async()=>{
+  const err=document.getElementById('micErr');
+  try{ await initAudio(); }
+  catch(e){
+    // shown on the start screen so a platform test build reports exactly why the mic failed
+    err.textContent=`Микрофон недоступен: ${e.name}. `+(e.name==='NotAllowedError'?'Доступ запрещён браузером или площадкой.':e.name==='NotFoundError'?'Микрофон не найден.':e.message);
+    return;
+  }
+  await calibrate(true);
+  showScreen('menu');
+};
+</script>
+</body>
+</html>
+
